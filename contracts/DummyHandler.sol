@@ -763,10 +763,12 @@ interface ICounter {
 contract DummyHandler is HandlerBase {
     ICounter public immutable countContract;
     address public immutable furuGelato;
+    uint256 public lastExecuted;
 
     constructor(address _countContract, address _furuGelato) public {
         countContract = ICounter(_countContract);
         furuGelato = _furuGelato;
+        lastExecuted = block.timestamp;
     }
 
     function getContractName() public pure override returns (string memory) {
@@ -778,6 +780,12 @@ contract DummyHandler is HandlerBase {
             msg.sender == furuGelato,
             "DummyHandler: increaseCount: Caller not FuruGelato"
         );
+        require(
+            ((block.timestamp - lastExecuted) > 180),
+            "DummyHandler: increaseCount: Time not elapsed"
+        );
+
         countContract.increaseCount(_amount);
+        lastExecuted = block.timestamp;
     }
 }

@@ -2,15 +2,15 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {IProxy} from "./interfaces/IProxy.sol";
+interface IDummyHandler {
+    function lastExecuted() external view returns (uint256);
+}
 
 contract DummyResolver {
-    address public immutable dummyHandler;
-    bool public allowExec;
+    IDummyHandler public immutable dummyHandler;
 
     constructor(address _dummyHandler) public {
-        allowExec = false;
-        dummyHandler = _dummyHandler;
+        dummyHandler = IDummyHandler(_dummyHandler);
     }
 
     function genPayloadAndCanExec(bytes calldata taskData)
@@ -19,7 +19,7 @@ contract DummyResolver {
         returns (bytes memory execData, bool _canExec)
     {
         address[] memory tos = new address[](1);
-        tos[0] = dummyHandler;
+        tos[0] = address(dummyHandler);
 
         bytes32[] memory configs = new bytes32[](1);
         configs[0] = bytes32(0);
@@ -36,10 +36,7 @@ contract DummyResolver {
 
     function canExec(bytes calldata data) public view returns (bool _canExec) {
         data;
-        _canExec = allowExec;
-    }
 
-    function toggleAllowExec() external {
-        allowExec = !allowExec;
+        _canExec = (block.timestamp - dummyHandler.lastExecuted()) > 180;
     }
 }

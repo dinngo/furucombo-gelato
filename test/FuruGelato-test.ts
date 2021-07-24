@@ -57,14 +57,14 @@ describe("FuruGelato", function () {
 
     await network.provider.request({
       method: "hardhat_impersonateAccount",
-      params: [gelatoExecutorAddress],
+      params: [gelatoAddress],
     });
 
-    executor = await ethers.provider.getSigner(gelatoExecutorAddress);
+    executor = await ethers.provider.getSigner(gelatoAddress);
 
     const furuGelatoD = await furuGelatoF
       .connect(registryOwner)
-      .deploy(ethers.utils.parseEther("1"), gelatoAddress, proxyAddress);
+      .deploy(gelatoAddress, proxyAddress);
     const counterD = await counterF.deploy();
     const handlerD = await handlerF.deploy(
       counterD.address,
@@ -132,7 +132,7 @@ describe("FuruGelato", function () {
       furuGelato.connect(user0).createTask(resolver.address, taskData)
     )
       .to.emit(furuGelato, "TaskCreated")
-      .withArgs(resolver.address, taskData);
+      .withArgs(user0.address, resolver.address, taskData);
 
     await expect(
       furuGelato.connect(user0).createTask(resolver.address, taskData)
@@ -152,10 +152,14 @@ describe("FuruGelato", function () {
       furuGelato.address
     );
     const balanceInitial_executor = await ethers.provider.getBalance(
-      gelatoExecutorAddress
+      gelatoAddress
     );
 
-    await resolver.toggleAllowExec();
+    const THREE_MIN = 3 * 60;
+
+    await network.provider.send("evm_increaseTime", [THREE_MIN]);
+    await network.provider.send("evm_mine", []);
+
     expect(await counter.count()).to.be.eql(ethers.BigNumber.from("0"));
 
     const taskData = handler.interface.encodeFunctionData("increaseCount", [5]);
@@ -166,7 +170,13 @@ describe("FuruGelato", function () {
 
     await furuGelato
       .connect(executor)
-      .exec(resolver.address, taskData, execData);
+      .exec(
+        ethers.utils.parseEther("1"),
+        user0.address,
+        resolver.address,
+        taskData,
+        execData
+      );
 
     const expectedExecData = proxy.interface.encodeFunctionData("batchExec", [
       [handler.address],
@@ -181,7 +191,7 @@ describe("FuruGelato", function () {
     expect(balanceInitial_furuGelato).to.be.gt(
       await ethers.provider.getBalance(furuGelato.address)
     );
-    expect(await ethers.provider.getBalance(gelatoExecutorAddress)).to.be.gt(
+    expect(await ethers.provider.getBalance(gelatoAddress)).to.be.gt(
       balanceInitial_executor
     );
   });
