@@ -6,7 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {
     EnumerableSet
 } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {IDsProxy} from "./interfaces/IDsProxy.sol";
+import {IDSProxy} from "./interfaces/IDSProxy.sol";
 import {IProxy} from "./interfaces/IProxy.sol";
 
 contract FuruGelato is Ownable, Gelatofied {
@@ -16,8 +16,8 @@ contract FuruGelato is Ownable, Gelatofied {
     mapping(bytes32 => address) public callerOfTask;
     EnumerableSet.AddressSet internal _whitelistedResolvers;
 
-    event TaskCreated(address callee, address resolver, bytes taskData);
-    event TaskCancelled(address callee, address resolver, bytes taskData);
+    event TaskCreated(address caller, address resolver, bytes taskData);
+    event TaskCancelled(address caller, address resolver, bytes taskData);
 
     constructor(address payable _gelato, address _furuProxy)
         Gelatofied(_gelato)
@@ -45,18 +45,6 @@ contract FuruGelato is Ownable, Gelatofied {
         emit TaskCreated(_proxy, _resolver, _taskData);
     }
 
-    function getCallerOfTask(
-        address _sender,
-        address _resolver,
-        bytes calldata _taskData
-    ) external view returns (address) {
-        bytes32 _task = keccak256(abi.encode(_sender, _resolver, _taskData));
-
-        address caller = callerOfTask[_task];
-
-        return caller;
-    }
-
     function cancelTask(address _resolver, bytes calldata _taskData) external {
         bytes32 _task = keccak256(abi.encode(msg.sender, _resolver, _taskData));
 
@@ -78,15 +66,15 @@ contract FuruGelato is Ownable, Gelatofied {
 
     function exec(
         uint256 _fee,
-        address _caller,
+        address _proxy,
         address _resolver,
         bytes calldata _taskData,
         bytes calldata _execData
     ) external gelatofy(_fee, ETH) {
-        bytes32 _task = keccak256(abi.encode(_caller, _resolver, _taskData));
+        bytes32 _task = keccak256(abi.encode(_proxy, _resolver, _taskData));
 
         require(
-            _caller == callerOfTask[_task],
+            _proxy == callerOfTask[_task],
             "FuruGelato: exec: No task found"
         );
 
@@ -95,7 +83,7 @@ contract FuruGelato is Ownable, Gelatofied {
 
         address target = address(this);
 
-        IDsProxy(_caller).execute(target, dsData);
+        IDSProxy(_proxy).execute(target, dsData);
     }
 
     function whitelistResolver(address _resolver) external onlyOwner {

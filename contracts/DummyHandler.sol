@@ -776,11 +776,6 @@ contract DummyHandler is HandlerBase {
     }
 
     function increaseCount(uint256 _amount) external {
-        // require(
-        //     msg.sender == furuGelato,
-        //     "DummyHandler: increaseCount: Caller not FuruGelato"
-        // );
-
         require(
             ((block.timestamp - lastExecuted) >= 180),
             "DummyHandler: increaseCount: Time not elapsed"

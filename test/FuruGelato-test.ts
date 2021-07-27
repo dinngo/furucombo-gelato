@@ -1,8 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers, network, waffle } from "hardhat";
-import { task } from "hardhat/config";
-import { eventNames } from "process";
 import {
   IProxy,
   IRegistry,
@@ -10,8 +8,9 @@ import {
   DummyHandler,
   Counter,
   DummyResolver,
-  IDsProxy,
+  IDSProxy,
   DSProxyFactory,
+  DSGuard,
 } from "../typechain";
 
 const gelatoAddress = "0x3CACa7b48D0573D793d3b0279b5F0029180E83b6";
@@ -27,9 +26,10 @@ describe("FuruGelato", function () {
 
   let furuProxy: IProxy;
   let registry: IRegistry;
-  let dsProxy: IDsProxy;
-  let dsProxyFactory: DSProxyFactory;
+  let dsProxy: IDSProxy;
 
+  let dsGuard: DSGuard;
+  let dsProxyFactory: DSProxyFactory;
   let furuGelato: FuruGelato;
   let handler: DummyHandler;
   let resolver: DummyResolver;
@@ -46,6 +46,7 @@ describe("FuruGelato", function () {
 
     const furuGelatoF = await ethers.getContractFactory("FuruGelato");
     const dsProxyFactoryF = await ethers.getContractFactory("DSProxyFactory");
+    const dsGuardF = await ethers.getContractFactory("DSGuard");
     const dsProxyF = await ethers.getContractFactory("DSProxy");
     const counterF = await ethers.getContractFactory("Counter");
     const handlerF = await ethers.getContractFactory("DummyHandler");
@@ -74,6 +75,7 @@ describe("FuruGelato", function () {
       .connect(registryOwner)
       .deploy(gelatoAddress, furuProxyAddress);
     const dsProxyFactoryD = await dsProxyFactoryF.deploy();
+    const dsGuardD = await dsGuardF.deploy();
     const counterD = await counterF.deploy();
     const handlerD = await handlerF.deploy(
       counterD.address,
@@ -90,6 +92,11 @@ describe("FuruGelato", function () {
       "DSProxyFactory",
       dsProxyFactoryD.address
     )) as DSProxyFactory;
+
+    dsGuard = (await ethers.getContractAt(
+      "DSGuard",
+      dsGuardD.address
+    )) as DSGuard;
 
     furuGelato = (await ethers.getContractAt(
       "FuruGelato",
@@ -115,10 +122,24 @@ describe("FuruGelato", function () {
 
     const dsProxyD = await dsProxyF.deploy(cache);
     dsProxy = (await ethers.getContractAt(
-      "IDsProxy",
+      "IDSProxy",
       dsProxyD.address,
       user0
-    )) as IDsProxy;
+    )) as IDSProxy;
+
+    const any = await dsGuard.ANY();
+
+    await dsGuard
+      .connect(user0)
+      ["permit(address,address,bytes32)"](
+        furuGelato.address,
+        dsProxy.address,
+        any
+      );
+
+    await expect(dsProxy.connect(user0).setAuthority(dsGuard.address))
+      .to.emit(dsProxy, "LogSetAuthority")
+      .withArgs(dsGuard.address);
 
     await registry
       .connect(registryOwner)
@@ -131,6 +152,12 @@ describe("FuruGelato", function () {
       value: ethers.utils.parseEther("5"),
       to: furuGelato.address,
     });
+
+    // console.log("FuruGelato: ", furuGelato.address);
+    // console.log("User0: ", user0.address);
+    // console.log("FuruProsy: ", furuProxyAddress);
+    // console.log("DSProxy: ", dsProxy.address);
+    // console.log("DSGuard: ", dsGuard.address);
   });
 
   it("Only owner can whitelist resolver", async () => {
@@ -200,10 +227,6 @@ describe("FuruGelato", function () {
       [[handler.address], [Zero], [taskData]]
     );
     expect(expectedExecData).to.be.eql(execData);
-
-    await expect(dsProxy.connect(user0).setAuthority(furuGelato.address))
-      .to.emit(dsProxy, "LogSetAuthority")
-      .withArgs(furuGelato.address);
 
     await furuGelato
       .connect(executor)

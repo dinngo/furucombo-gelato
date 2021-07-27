@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.0;
 
-interface IDsProxy {
+interface IDSProxy {
     function owner() external view returns (address);
 
     function execute(address _target, bytes memory _data)
