@@ -1,42 +1,60 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.12;
+pragma solidity 0.8.0;
 
 import {Gelatofied} from "./Gelatofied.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import {
+    EnumerableSet
+} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IDsProxy} from "./interfaces/IDsProxy.sol";
+import {IProxy} from "./interfaces/IProxy.sol";
 
 contract FuruGelato is Ownable, Gelatofied {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    address public immutable proxy;
+    address public immutable furuProxy;
     mapping(bytes32 => address) public callerOfTask;
     EnumerableSet.AddressSet internal _whitelistedResolvers;
 
     event TaskCreated(address callee, address resolver, bytes taskData);
     event TaskCancelled(address callee, address resolver, bytes taskData);
 
-    constructor(address payable _gelato, address _proxy)
-        public
+    constructor(address payable _gelato, address _furuProxy)
         Gelatofied(_gelato)
     {
-        proxy = _proxy;
+        furuProxy = _furuProxy;
     }
 
     receive() external payable {}
 
-    function createTask(address _resolver, bytes calldata _taskData) external {
+    function createTask(
+        address _proxy,
+        address _resolver,
+        bytes calldata _taskData
+    ) external {
         require(_whitelistedResolvers.contains(_resolver));
 
-        bytes32 _task = keccak256(abi.encode(msg.sender, _resolver, _taskData));
-
+        bytes32 _task = keccak256(abi.encode(_proxy, _resolver, _taskData));
         require(
             callerOfTask[_task] == address(0),
             "FuruGelato: createTask: Sender already started task"
         );
 
-        callerOfTask[_task] = msg.sender;
+        callerOfTask[_task] = _proxy;
 
-        emit TaskCreated(msg.sender, _resolver, _taskData);
+        emit TaskCreated(_proxy, _resolver, _taskData);
+    }
+
+    function getCallerOfTask(
+        address _sender,
+        address _resolver,
+        bytes calldata _taskData
+    ) external view returns (address) {
+        bytes32 _task = keccak256(abi.encode(_sender, _resolver, _taskData));
+
+        address caller = callerOfTask[_task];
+
+        return caller;
     }
 
     function cancelTask(address _resolver, bytes calldata _taskData) external {
@@ -50,6 +68,12 @@ contract FuruGelato is Ownable, Gelatofied {
         delete callerOfTask[_task];
 
         emit TaskCancelled(msg.sender, _resolver, _taskData);
+    }
+
+    function dsProxyExecute(bytes calldata _execData) public {
+        (bool success, ) = furuProxy.call(_execData);
+
+        require(success, "FuruGelato: exec: Exec failed");
     }
 
     function exec(
@@ -66,8 +90,12 @@ contract FuruGelato is Ownable, Gelatofied {
             "FuruGelato: exec: No task found"
         );
 
-        (bool success, ) = proxy.call(_execData);
-        require(success, "FuruGelato: exec: Exec failed");
+        bytes memory dsData =
+            abi.encodeWithSelector(this.dsProxyExecute.selector, _execData);
+
+        address target = address(this);
+
+        IDsProxy(_caller).execute(target, dsData);
     }
 
     function whitelistResolver(address _resolver) external onlyOwner {

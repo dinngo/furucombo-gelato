@@ -1,16 +1,7 @@
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.0;
 
 interface IProxy {
-    /**
-     * @notice Combo execution function. Including three phases: pre-process,
-     * exection and post-process.
-     * @param tos The handlers of combo.
-     * @param configs The configurations of executing cubes.
-     * @param datas The combo datas.
-     */
     function batchExec(
         address[] calldata tos,
         bytes32[] calldata configs,

@@ -1,6 +1,8 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers, network, waffle } from "hardhat";
+import { task } from "hardhat/config";
+import { eventNames } from "process";
 import {
   IProxy,
   IRegistry,
@@ -8,20 +10,25 @@ import {
   DummyHandler,
   Counter,
   DummyResolver,
+  IDsProxy,
+  DSProxyFactory,
 } from "../typechain";
 
 const gelatoAddress = "0x3CACa7b48D0573D793d3b0279b5F0029180E83b6";
-const gelatoExecutorAddress = "0x160694f252B907CDf3862922950142a5f1Fd161a";
-const proxyAddress = "0xA013AfbB9A92cEF49e898C87C060e6660E050569";
+const furuProxyAddress = "0xA013AfbB9A92cEF49e898C87C060e6660E050569";
 const handlerRegistryAddress = "0xd4258B13C9FADb7623Ca4b15DdA34b7b85b842C7";
 const Zero = ethers.constants.HashZero;
 
 describe("FuruGelato", function () {
+  this.timeout(0);
   let user0: SignerWithAddress;
   let registryOwner: any;
   let executor: any;
-  let proxy: IProxy;
+
+  let furuProxy: IProxy;
   let registry: IRegistry;
+  let dsProxy: IDsProxy;
+  let dsProxyFactory: DSProxyFactory;
 
   let furuGelato: FuruGelato;
   let handler: DummyHandler;
@@ -30,6 +37,7 @@ describe("FuruGelato", function () {
 
   before(async function () {
     [user0] = await ethers.getSigners();
+    executor = await ethers.provider.getSigner(gelatoAddress);
 
     registry = (await ethers.getContractAt(
       "IRegistry",
@@ -37,6 +45,8 @@ describe("FuruGelato", function () {
     )) as IRegistry;
 
     const furuGelatoF = await ethers.getContractFactory("FuruGelato");
+    const dsProxyFactoryF = await ethers.getContractFactory("DSProxyFactory");
+    const dsProxyF = await ethers.getContractFactory("DSProxy");
     const counterF = await ethers.getContractFactory("Counter");
     const handlerF = await ethers.getContractFactory("DummyHandler");
     const resolverF = await ethers.getContractFactory("DummyResolver");
@@ -60,11 +70,10 @@ describe("FuruGelato", function () {
       params: [gelatoAddress],
     });
 
-    executor = await ethers.provider.getSigner(gelatoAddress);
-
     const furuGelatoD = await furuGelatoF
       .connect(registryOwner)
-      .deploy(gelatoAddress, proxyAddress);
+      .deploy(gelatoAddress, furuProxyAddress);
+    const dsProxyFactoryD = await dsProxyFactoryF.deploy();
     const counterD = await counterF.deploy();
     const handlerD = await handlerF.deploy(
       counterD.address,
@@ -72,7 +81,15 @@ describe("FuruGelato", function () {
     );
     const resolverD = await resolverF.deploy(handlerD.address);
 
-    proxy = (await ethers.getContractAt("IProxy", proxyAddress)) as IProxy;
+    furuProxy = (await ethers.getContractAt(
+      "IProxy",
+      furuProxyAddress
+    )) as IProxy;
+
+    dsProxyFactory = (await ethers.getContractAt(
+      "DSProxyFactory",
+      dsProxyFactoryD.address
+    )) as DSProxyFactory;
 
     furuGelato = (await ethers.getContractAt(
       "FuruGelato",
@@ -93,6 +110,15 @@ describe("FuruGelato", function () {
       "DummyResolver",
       resolverD.address
     )) as DummyResolver;
+
+    const cache = await dsProxyFactory.cache();
+
+    const dsProxyD = await dsProxyF.deploy(cache);
+    dsProxy = (await ethers.getContractAt(
+      "IDsProxy",
+      dsProxyD.address,
+      user0
+    )) as IDsProxy;
 
     await registry
       .connect(registryOwner)
@@ -124,18 +150,19 @@ describe("FuruGelato", function () {
 
     await expect(
       furuGelato.connect(user0).cancelTask(resolver.address, taskData)
-    ).to.be.revertedWith(
-      "FuruGelato: cancelTask: Sender did not start task yet"
-    );
-
+    ).to.be.reverted;
     await expect(
-      furuGelato.connect(user0).createTask(resolver.address, taskData)
+      furuGelato
+        .connect(user0)
+        .createTask(dsProxy.address, resolver.address, taskData)
     )
       .to.emit(furuGelato, "TaskCreated")
-      .withArgs(user0.address, resolver.address, taskData);
+      .withArgs(dsProxy.address, resolver.address, taskData);
 
     await expect(
-      furuGelato.connect(user0).createTask(resolver.address, taskData)
+      furuGelato
+        .connect(user0)
+        .createTask(dsProxy.address, resolver.address, taskData)
     ).to.be.revertedWith("FuruGelato: createTask: Sender already started task");
   });
 
@@ -168,23 +195,25 @@ describe("FuruGelato", function () {
 
     expect(canExec).to.be.eql(true);
 
+    const expectedExecData = furuProxy.interface.encodeFunctionData(
+      "batchExec",
+      [[handler.address], [Zero], [taskData]]
+    );
+    expect(expectedExecData).to.be.eql(execData);
+
+    await expect(dsProxy.connect(user0).setAuthority(furuGelato.address))
+      .to.emit(dsProxy, "LogSetAuthority")
+      .withArgs(furuGelato.address);
+
     await furuGelato
       .connect(executor)
       .exec(
         ethers.utils.parseEther("1"),
-        user0.address,
+        dsProxy.address,
         resolver.address,
         taskData,
         execData
       );
-
-    const expectedExecData = proxy.interface.encodeFunctionData("batchExec", [
-      [handler.address],
-      [Zero],
-      [taskData],
-    ]);
-
-    expect(expectedExecData).to.be.eql(execData);
 
     expect(await counter.count()).to.be.eql(ethers.BigNumber.from("5"));
 

@@ -30,7 +30,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ID}`,
-        blockNumber: 12645718,
+        blockNumber: 12901600,
       },
     },
 
@@ -61,6 +61,18 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.6.12",
+        settings: {
+          optimizer: { enabled: true },
+        },
+      },
+      {
+        version: "0.8.0",
+        settings: {
+          optimizer: { enabled: true },
+        },
+      },
+      {
+        version: "0.5.0",
         settings: {
           optimizer: { enabled: true },
         },

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.12;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.0;
 
 interface IDummyHandler {
     function lastExecuted() external view returns (uint256);
@@ -9,7 +8,7 @@ interface IDummyHandler {
 contract DummyResolver {
     IDummyHandler public immutable dummyHandler;
 
-    constructor(address _dummyHandler) public {
+    constructor(address _dummyHandler) {
         dummyHandler = IDummyHandler(_dummyHandler);
     }
 
