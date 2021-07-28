@@ -16,7 +16,6 @@ contract FuruGelato is Ownable, Gelatofied {
 
     string public constant VERSION = "0.0.1";
     address public immutable THIS;
-    address public furuProxy;
     mapping(bytes32 => address) public callerOfTask;
     EnumerableSet.Bytes32Set internal _whitelistedTasks;
 
@@ -48,10 +47,7 @@ contract FuruGelato is Ownable, Gelatofied {
         _;
     }
 
-    constructor(address payable _gelato, address _furuProxy)
-        Gelatofied(_gelato)
-    {
-        furuProxy = _furuProxy;
+    constructor(address payable _gelato) Gelatofied(_gelato) {
         THIS = address(this);
     }
 
@@ -124,7 +120,7 @@ contract FuruGelato is Ownable, Gelatofied {
         onlyDelegatecall
     {
         for (uint256 i; i < _targets.length; i++) {
-            (bool success, ) = _targets[i].delegatecall(_datas[i]);
+            (bool success, ) = _targets[i].call(_datas[i]);
             require(success, "FuruGelato: batchExec: Delegatecall failed");
         }
     }
@@ -154,15 +150,6 @@ contract FuruGelato is Ownable, Gelatofied {
         require(success, "FuruGelato: withdrawFunds: Withdraw funds failed");
 
         emit LogFundsWithdrawn(msg.sender, _amount, _receiver);
-    }
-
-    function updateFuruProxy(address _newFuruProxy) external onlyOwner {
-        require(
-            _newFuruProxy != address(0),
-            "FuruGelato: updateFurucomboProxy: Address Zero"
-        );
-
-        furuProxy = _newFuruProxy;
     }
 
     function getWhitelistedTasks()
