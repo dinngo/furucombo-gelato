@@ -1,7 +1,7 @@
 {
-  "name": "gelato-limit-order-proxy-handler",
+  "name": "furu-gelato",
   "version": "0.0.1",
-  "description": "Gelato Limit Order Proxy handler",
+  "description": "Gelato Furucombo Automation",
   "scripts": {
     "build": "yarn clean && yarn compile && npx tsc",
     "clean": "rm -rf dist",
@@ -18,14 +18,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gelatodigital/gelato-limit-orders.git"
+    "url": "git+https://github.com/gelatodigital/furu-gelato.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/gelatodigital/gelato-limit-orders/issues"
+    "url": "https://github.com/gelatodigital/furu-gelato/issues"
   },
-  "homepage": "https://github.com/gelatodigital/gelato-limit-orders#readme",
+  "homepage": "https://github.com/gelatodigital/furu-gelato#readme",
   "devDependencies": {
     "@codechecks/client": "0.1.10",
     "@gelatonetwork/limit-orders-lib": "0.4.0",
@@ -61,7 +61,14 @@
     "typechain": "4.0.3",
     "typescript": "4.2.4"
   },
+  "husky": {
+    "hooks": {
+      "pre-commit": "yarn install && yarn compile --force && yarn lint:sol && yarn lint-staged",
+      "pre-push": "git fetch origin && HUSKY_SKIP_HOOKS=1 git rebase origin/dev && yarn test"
+    }
+  },
   "lint-staged": {
-    "*.{ts,js}": "eslint -c .eslintrc.json"
+    "*.{ts,js}": "eslint -c .eslintrc.json",
+    "*.{ts,js,sol,json,css,md,yml}": "prettier --write"
   }
 }

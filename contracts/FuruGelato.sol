@@ -40,6 +40,14 @@ contract FuruGelato is Ownable, Gelatofied {
         address receiver
     );
 
+    modifier onlyDelegatecall() {
+        require(
+            THIS != address(this),
+            "FuruGelato: batchExec: Only delegatecall"
+        );
+        _;
+    }
+
     constructor(address payable _gelato, address _furuProxy)
         Gelatofied(_gelato)
     {
@@ -113,12 +121,8 @@ contract FuruGelato is Ownable, Gelatofied {
     /// @notice Delegatecalled by User Proxies
     function batchExec(address[] memory _targets, bytes[] memory _datas)
         external
+        onlyDelegatecall
     {
-        require(
-            THIS != address(this),
-            "FuruGelato: batchExec: Only delegatecall"
-        );
-
         for (uint256 i; i < _targets.length; i++) {
             (bool success, ) = _targets[i].delegatecall(_datas[i]);
             require(success, "FuruGelato: batchExec: Delegatecall failed");
