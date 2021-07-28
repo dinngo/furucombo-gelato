@@ -33,6 +33,13 @@ contract FuruGelato is Ownable, Gelatofied {
         bytes32 _hash
     );
 
+    event LogFundsDeposited(address indexed sender, uint256 amount);
+    event LogFundsWithdrawn(
+        address indexed sender,
+        uint256 amount,
+        address receiver
+    );
+
     constructor(address payable _gelato, address _furuProxy)
         Gelatofied(_gelato)
     {
@@ -40,7 +47,9 @@ contract FuruGelato is Ownable, Gelatofied {
         THIS = address(this);
     }
 
-    receive() external payable {}
+    receive() external payable {
+        emit LogFundsDeposited(msg.sender, msg.value);
+    }
 
     function createTask(
         address[] calldata _targets,
@@ -139,6 +148,8 @@ contract FuruGelato is Ownable, Gelatofied {
     {
         (bool success, ) = _receiver.call{value: _amount}("");
         require(success, "FuruGelato: withdrawFunds: Withdraw funds failed");
+
+        emit LogFundsWithdrawn(msg.sender, _amount, _receiver);
     }
 
     function updateFuruProxy(address _newFuruProxy) external onlyOwner {
@@ -150,7 +161,7 @@ contract FuruGelato is Ownable, Gelatofied {
         furuProxy = _newFuruProxy;
     }
 
-    function getWhitelistedResolvers()
+    function getWhitelistedTasks()
         external
         view
         returns (bytes32[] memory _tasks)
@@ -165,7 +176,7 @@ contract FuruGelato is Ownable, Gelatofied {
         return _whitelistedTasks.contains(_hash);
     }
 
-    function getHash(address[] memory _targets, bytes[] memory _datas)
+    function getHash(address[] calldata _targets, bytes[] calldata _datas)
         public
         pure
         returns (bytes32 _hash)
@@ -176,17 +187,19 @@ contract FuruGelato is Ownable, Gelatofied {
         );
 
         bytes4[] memory selectors = getSelectors(_datas);
-
         _hash = keccak256(abi.encode(_targets, selectors));
     }
 
-    function getSelectors(bytes[] memory _datas)
+    function getSelectors(bytes[] calldata _datas)
         public
         pure
-        returns (bytes4[] memory _selectors)
+        returns (bytes4[] memory)
     {
+        bytes4[] memory _selectors = new bytes4[](_datas.length);
+
         for (uint256 i = 0; i < _datas.length; i++) {
-            _selectors[i] = _datas[i].memorySliceSelector();
+            _selectors[i] = _datas[i].calldataSliceSelector();
         }
+        return _selectors;
     }
 }

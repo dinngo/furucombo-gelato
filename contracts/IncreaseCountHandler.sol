@@ -760,28 +760,21 @@ interface ICounter {
     function increaseCount(uint256 amount) external;
 }
 
-contract DummyHandler is HandlerBase {
+contract IncreaseCountHandler is HandlerBase {
     ICounter public immutable countContract;
     address public immutable furuGelato;
-    uint256 public lastExecuted;
 
     constructor(address _countContract, address _furuGelato) public {
         countContract = ICounter(_countContract);
         furuGelato = _furuGelato;
-        lastExecuted = block.timestamp;
     }
 
     function getContractName() public pure override returns (string memory) {
-        return "DummyHandler";
+        return "IncreaseCountHandler";
     }
 
     function increaseCount(uint256 _amount) external {
-        require(
-            ((block.timestamp - lastExecuted) >= 180),
-            "DummyHandler: increaseCount: Time not elapsed"
-        );
-
+        require(msg.sender == furuGelato);
         countContract.increaseCount(_amount);
-        lastExecuted = block.timestamp;
     }
 }
