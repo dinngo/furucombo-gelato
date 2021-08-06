@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import {
   FuruGelato,
-  ActionsMock,
+  ActionMock,
   CreateTaskHandler,
   TaskTimer,
   IDSProxy,
@@ -25,7 +25,7 @@ describe("FuruGelato", function () {
   let dsGuard: DSGuard;
   let dsProxyFactory: DSProxyFactory;
   let furuGelato: FuruGelato;
-  let actions: ActionsMock;
+  let action: ActionMock;
 
   let taskHandler: CreateTaskHandler;
   let taskTimer: TaskTimer;
@@ -36,7 +36,7 @@ describe("FuruGelato", function () {
     executor = await ethers.provider.getSigner(gelatoAddress);
 
     const furuGelatoF = await ethers.getContractFactory("FuruGelato");
-    const actionsF = await ethers.getContractFactory("ActionsMock");
+    const actionF = await ethers.getContractFactory("ActionMock");
     const dsProxyFactoryF = await ethers.getContractFactory("DSProxyFactory");
     const dsGuardF = await ethers.getContractFactory("DSGuard");
     const dsProxyF = await ethers.getContractFactory("DSProxy");
@@ -51,11 +51,11 @@ describe("FuruGelato", function () {
     });
 
     const furuGelatoD = await furuGelatoF.connect(owner).deploy(gelatoAddress);
-    const actionsD = await actionsF.deploy();
+    const actionD = await actionF.deploy();
     const dsProxyFactoryD = await dsProxyFactoryF.deploy();
     const dsGuardD = await dsGuardF.deploy();
     const taskTimerD = await taskTimerF.deploy(
-      actionsD.address,
+      actionD.address,
       furuGelatoD.address,
       180
     );
@@ -78,10 +78,10 @@ describe("FuruGelato", function () {
       furuGelatoD.address
     )) as FuruGelato;
 
-    actions = (await ethers.getContractAt(
-      "ActionsMock",
-      actionsD.address
-    )) as ActionsMock;
+    action = (await ethers.getContractAt(
+      "ActionMock",
+      actionD.address
+    )) as ActionMock;
 
     taskTimer = (await ethers.getContractAt(
       "TaskTimer",
@@ -126,35 +126,35 @@ describe("FuruGelato", function () {
   it("check create and cancel task", async () => {
     const fooData = foo.interface.encodeFunctionData("bar");
     const fooTarget = foo.address;
-    const actionsData = actions.interface.encodeFunctionData("multiCall", [
+    const actionData = action.interface.encodeFunctionData("multiCall", [
       [fooTarget],
       [fooData],
     ]);
     const dsCreateTask = taskHandler.interface.encodeFunctionData(
       "createTask",
-      [taskTimer.address, actionsData]
+      [taskTimer.address, actionData]
     );
     const taskId = await taskTimer.getTaskId(
       dsProxy.address,
       taskTimer.address,
-      actionsData
+      actionData
     );
     const dsCancelTask = taskHandler.interface.encodeFunctionData(
       "cancelTask",
-      [taskTimer.address, actionsData]
+      [taskTimer.address, actionData]
     );
 
     await expect(
       dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
     )
       .to.emit(furuGelato, "TaskCreated")
-      .withArgs(dsProxy.address, taskId, taskTimer.address, actionsData);
+      .withArgs(dsProxy.address, taskId, taskTimer.address, actionData);
 
     await expect(
       dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
     )
       .to.emit(furuGelato, "TaskCancelled")
-      .withArgs(dsProxy.address, taskId, taskTimer.address, actionsData);
+      .withArgs(dsProxy.address, taskId, taskTimer.address, actionData);
 
     await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
   });
@@ -163,7 +163,7 @@ describe("FuruGelato", function () {
     expect(await foo.ok()).to.be.false;
     const fooData = foo.interface.encodeFunctionData("bar");
     const fooTarget = foo.address;
-    const actionsData = actions.interface.encodeFunctionData("multiCall", [
+    const actionData = action.interface.encodeFunctionData("multiCall", [
       [fooTarget],
       [fooData],
     ]);
@@ -173,7 +173,7 @@ describe("FuruGelato", function () {
     await expect(
       furuGelato
         .connect(executor)
-        .exec(fee, dsProxy.address, taskTimer.address, actionsData)
+        .exec(fee, dsProxy.address, taskTimer.address, actionData)
     ).to.be.revertedWith("Checker failed");
 
     const THREE_MIN = 3 * 60;
@@ -183,7 +183,7 @@ describe("FuruGelato", function () {
 
     await furuGelato
       .connect(executor)
-      .exec(fee, dsProxy.address, taskTimer.address, actionsData);
+      .exec(fee, dsProxy.address, taskTimer.address, actionData);
 
     expect(await foo.ok()).to.be.true;
   });

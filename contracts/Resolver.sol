@@ -12,34 +12,34 @@ abstract contract Resolver {
         external
         view
         virtual
-        returns (bool canExec, bytes memory execPayload);
+        returns (bool canExec, bytes memory executionData);
 
-    function onCreateTask(address executor, bytes calldata resolverData)
+    function onCreateTask(address taskCreator, bytes calldata resolverData)
         external
         virtual
         returns (bool)
     {
-        executor;
+        taskCreator;
         resolverData;
         return true;
     }
 
-    function onCancelTask(address executor, bytes calldata resolverData)
+    function onCancelTask(address taskCreator, bytes calldata resolverData)
         external
         virtual
         returns (bool)
     {
-        executor;
+        taskCreator;
         resolverData;
         return true;
     }
 
-    function onExec(address executor, bytes calldata resolverData)
+    function onExec(address taskExecutor, bytes calldata resolverData)
         external
         virtual
         returns (bool)
     {
-        executor;
+        taskExecutor;
         resolverData;
         return true;
     }

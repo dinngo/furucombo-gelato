@@ -36,38 +36,38 @@ contract TaskTimer is Resolver, DSProxyTask {
         return (_isReady(task), _resolverData);
     }
 
-    function onCreateTask(address _executor, bytes calldata _resolverData)
+    function onCreateTask(address _taskCreator, bytes calldata _resolverData)
         external
         override
         onlyFuruGelato
         returns (bool)
     {
-        bytes32 task = getTaskId(_executor, address(this), _resolverData);
+        bytes32 task = getTaskId(_taskCreator, address(this), _resolverData);
         lastExecTimes[task] = block.timestamp;
 
         return true;
     }
 
-    function onCancelTask(address _executor, bytes calldata _resolverData)
+    function onCancelTask(address _taskCreator, bytes calldata _resolverData)
         external
         override
         onlyFuruGelato
         returns (bool)
     {
-        bytes32 taskId = getTaskId(_executor, address(this), _resolverData);
+        bytes32 taskId = getTaskId(_taskCreator, address(this), _resolverData);
         delete lastExecTimes[taskId];
 
         return true;
     }
 
-    function onExec(address _executor, bytes calldata _resolverData)
+    function onExec(address _taskExecutor, bytes calldata _resolverData)
         external
         override
         onlyFuruGelato
         returns (bool)
     {
-        bytes32 task = getTaskId(_executor, address(this), _resolverData);
-        _reset(task);
+        bytes32 taskId = getTaskId(_taskExecutor, address(this), _resolverData);
+        _reset(taskId);
 
         return true;
     }
@@ -77,10 +77,10 @@ contract TaskTimer is Resolver, DSProxyTask {
         lastExecTimes[taskId] = block.timestamp;
     }
 
-    function _isReady(bytes32 task) internal view returns (bool) {
-        if (lastExecTimes[task] == 0) {
+    function _isReady(bytes32 taskId) internal view returns (bool) {
+        if (lastExecTimes[taskId] == 0) {
             return false;
-        } else if (block.timestamp < lastExecTimes[task] + period) {
+        } else if (block.timestamp < lastExecTimes[taskId] + period) {
             return false;
         } else {
             return true;

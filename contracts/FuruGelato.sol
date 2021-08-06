@@ -35,7 +35,7 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
     event ExecSuccess(
         uint256 indexed txFee,
         address indexed feeToken,
-        address indexed execAddress,
+        address indexed taskExecutor,
         bytes32 taskId
     );
 
@@ -55,22 +55,22 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
     function createTask(address _resolverAddress, bytes calldata _resolverData)
         external
     {
-        bytes32 task = getTaskId(msg.sender, _resolverAddress, _resolverData);
+        bytes32 taskId = getTaskId(msg.sender, _resolverAddress, _resolverData);
 
         require(
-            taskCreator[task] == address(0),
+            taskCreator[taskId] == address(0),
             "FuruGelato: createTask: Sender already started task"
         );
 
-        _createdTasks[msg.sender].add(task);
-        taskCreator[task] = msg.sender;
+        _createdTasks[msg.sender].add(taskId);
+        taskCreator[taskId] = msg.sender;
 
         require(
             Resolver(_resolverAddress).onCreateTask(msg.sender, _resolverData),
             "FuruGelato: createTask: onCreateTask() failed"
         );
 
-        emit TaskCreated(msg.sender, task, _resolverAddress, _resolverData);
+        emit TaskCreated(msg.sender, taskId, _resolverAddress, _resolverData);
     }
 
     function cancelTask(address _resolverAddress, bytes calldata _resolverData)
@@ -100,15 +100,18 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
         address _resolverAddress,
         bytes calldata _resolverData
     ) external gelatofy(_fee, ETH) {
-        bytes32 task = getTaskId(_proxy, _resolverAddress, _resolverData);
+        bytes32 taskId = getTaskId(_proxy, _resolverAddress, _resolverData);
         address actions = Resolver(_resolverAddress).action();
 
-        (bool ok, bytes memory executeData) =
+        (bool ok, bytes memory executionData) =
             Resolver(_resolverAddress).checker(_proxy, _resolverData);
         require(ok, "FuruGelato: exec: Checker failed");
-        require(_proxy == taskCreator[task], "FuruGelato: exec: No task found");
+        require(
+            _proxy == taskCreator[taskId],
+            "FuruGelato: exec: No task found"
+        );
 
-        try IDSProxy(_proxy).execute(actions, executeData) {} catch {
+        try IDSProxy(_proxy).execute(actions, executionData) {} catch {
             revert("FuruGelato: exec: execute failed");
         }
 
@@ -117,7 +120,7 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
             "FuruGelato: exec: onExec() failed"
         );
 
-        emit ExecSuccess(_fee, ETH, _proxy, task);
+        emit ExecSuccess(_fee, ETH, _proxy, taskId);
     }
 
     function withdrawFunds(uint256 _amount, address payable _receiver)
