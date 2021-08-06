@@ -68,21 +68,25 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
         emit TaskCreated(msg.sender, task, _resolverAddress, _resolverData);
     }
 
-    function cancelTask(address _resolverAddress, bytes32 _taskId) external {
+    function cancelTask(address _resolverAddress, bytes calldata _resolverData)
+        external
+    {
+        bytes32 taskId = getTaskId(msg.sender, _resolverAddress, _resolverData);
+
         require(
-            taskCreator[_taskId] == msg.sender,
+            taskCreator[taskId] == msg.sender,
             "FuruGelato: cancelTask: Sender did not start task yet"
         );
 
-        _createdTasks[msg.sender].remove(_taskId);
-        delete taskCreator[_taskId];
+        _createdTasks[msg.sender].remove(taskId);
+        delete taskCreator[taskId];
 
         require(
-            Resolver(_resolverAddress).onCancelTask(msg.sender, _taskId),
+            Resolver(_resolverAddress).onCancelTask(msg.sender, _resolverData),
             "FuruGelato: cancelTask: onCancelTask() failed"
         );
 
-        emit TaskCancelled(msg.sender, _taskId);
+        emit TaskCancelled(msg.sender, taskId);
     }
 
     function exec(
@@ -92,7 +96,7 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
         bytes calldata _resolverData
     ) external gelatofy(_fee, ETH) {
         bytes32 task = getTaskId(_proxy, _resolverAddress, _resolverData);
-        address actions = Resolver(_resolverAddress).actions();
+        address actions = Resolver(_resolverAddress).action();
 
         require(_proxy == taskCreator[task], "FuruGelato: exec: No task found");
 

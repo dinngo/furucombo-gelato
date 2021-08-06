@@ -16,7 +16,9 @@ contract CreateTaskHandler {
         IFuruGelato(furuGelato).createTask(_resolverAddress, _resolverData);
     }
 
-    function cancelTask(address _resolverAddress, bytes32 _taskId) external {
-        IFuruGelato(furuGelato).cancelTask(_resolverAddress, _taskId);
+    function cancelTask(address _resolverAddress, bytes calldata _resolverData)
+        external
+    {
+        IFuruGelato(furuGelato).cancelTask(_resolverAddress, _resolverData);
     }
 }

@@ -18,10 +18,10 @@ contract TaskTimer is Resolver, DSProxyTask {
     }
 
     constructor(
-        address _actions,
+        address _action,
         address _furuGelato,
         uint256 _period
-    ) Resolver(_actions) {
+    ) Resolver(_action) {
         furuGelato = _furuGelato;
         period = _period;
     }
@@ -48,6 +48,18 @@ contract TaskTimer is Resolver, DSProxyTask {
         return true;
     }
 
+    function onCancelTask(address _executor, bytes calldata _resolverData)
+        external
+        override
+        onlyFuruGelato
+        returns (bool)
+    {
+        bytes32 taskId = getTaskId(_executor, address(this), _resolverData);
+        delete lastExecTimes[taskId];
+
+        return true;
+    }
+
     function onExec(address _executor, bytes calldata _resolverData)
         external
         override
@@ -66,6 +78,12 @@ contract TaskTimer is Resolver, DSProxyTask {
     }
 
     function _isReady(bytes32 task) internal view returns (bool) {
-        return block.timestamp >= lastExecTimes[task] + period ? true : false;
+        if (lastExecTimes[task] == 0) {
+            return false;
+        } else if (block.timestamp < lastExecTimes[task] + period) {
+            return false;
+        } else {
+            return true;
+        }
     }
 }

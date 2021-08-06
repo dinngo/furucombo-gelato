@@ -5,7 +5,8 @@ interface IFuruGelato {
     function createTask(address _resolverAddress, bytes calldata _resolverData)
         external;
 
-    function cancelTask(address _resolverAddress, bytes32 _taskId) external;
+    function cancelTask(address _resolverAddress, bytes calldata _resolverData)
+        external;
 
     function exec(
         uint256 _fee,

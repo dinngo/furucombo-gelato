@@ -2,10 +2,10 @@
 pragma solidity 0.8.0;
 
 abstract contract Resolver {
-    address public immutable actions;
+    address public immutable action;
 
-    constructor(address _actions) {
-        actions = _actions;
+    constructor(address _action) {
+        action = _action;
     }
 
     function checker(address taskCreator, bytes calldata resolverData)
@@ -14,33 +14,33 @@ abstract contract Resolver {
         virtual
         returns (bool canExec, bytes memory execPayload);
 
-    function onCreateTask(address executor, bytes calldata execData)
+    function onCreateTask(address executor, bytes calldata resolverData)
         external
         virtual
         returns (bool)
     {
         executor;
-        execData;
+        resolverData;
         return true;
     }
 
-    function onCancelTask(address executor, bytes32 taskId)
+    function onCancelTask(address executor, bytes calldata resolverData)
         external
         virtual
         returns (bool)
     {
         executor;
-        taskId;
+        resolverData;
         return true;
     }
 
-    function onExec(address executor, bytes calldata execData)
+    function onExec(address executor, bytes calldata resolverData)
         external
         virtual
         returns (bool)
     {
         executor;
-        execData;
+        resolverData;
         return true;
     }
 }

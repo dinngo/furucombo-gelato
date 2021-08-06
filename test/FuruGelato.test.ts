@@ -141,7 +141,7 @@ describe("FuruGelato", function () {
     );
     const dsCancelTask = taskHandler.interface.encodeFunctionData(
       "cancelTask",
-      [taskTimer.address, taskId]
+      [taskTimer.address, actionsData]
     );
 
     await expect(
