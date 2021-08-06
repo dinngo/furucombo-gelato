@@ -21,12 +21,17 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
     mapping(address => EnumerableSet.Bytes32Set) internal _createdTasks;
 
     event TaskCreated(
-        address taskCreator,
+        address indexed taskCreator,
         bytes32 taskId,
-        address resolverAddress,
+        address indexed resolverAddress,
         bytes resolverData
     );
-    event TaskCancelled(address taskCreator, bytes32 taskId);
+    event TaskCancelled(
+        address indexed taskCreator,
+        bytes32 taskId,
+        address indexed resolverAddress,
+        bytes resolverData
+    );
     event ExecSuccess(
         uint256 indexed txFee,
         address indexed feeToken,
@@ -86,7 +91,7 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
             "FuruGelato: cancelTask: onCancelTask() failed"
         );
 
-        emit TaskCancelled(msg.sender, taskId);
+        emit TaskCancelled(msg.sender, taskId, _resolverAddress, _resolverData);
     }
 
     function exec(
@@ -98,9 +103,12 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
         bytes32 task = getTaskId(_proxy, _resolverAddress, _resolverData);
         address actions = Resolver(_resolverAddress).action();
 
+        (bool ok, bytes memory executeData) =
+            Resolver(_resolverAddress).checker(_proxy, _resolverData);
+        require(ok, "FuruGelato: exec: Checker failed");
         require(_proxy == taskCreator[task], "FuruGelato: exec: No task found");
 
-        try IDSProxy(_proxy).execute(actions, _resolverData) {} catch {
+        try IDSProxy(_proxy).execute(actions, executeData) {} catch {
             revert("FuruGelato: exec: execute failed");
         }
 

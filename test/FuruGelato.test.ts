@@ -154,7 +154,7 @@ describe("FuruGelato", function () {
       dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
     )
       .to.emit(furuGelato, "TaskCancelled")
-      .withArgs(dsProxy.address, taskId);
+      .withArgs(dsProxy.address, taskId, taskTimer.address, actionsData);
 
     await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
   });
@@ -174,7 +174,7 @@ describe("FuruGelato", function () {
       furuGelato
         .connect(executor)
         .exec(fee, dsProxy.address, taskTimer.address, actionsData)
-    ).to.be.revertedWith("Not yet");
+    ).to.be.revertedWith("Checker failed");
 
     const THREE_MIN = 3 * 60;
 
