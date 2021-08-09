@@ -17,10 +17,11 @@ contract ActionMock {
     }
 
     /// @notice Delegatecalled by User Proxies
-    function multiCall(address[] memory _targets, bytes[] memory _datas)
-        external
-        onlyDelegatecall
-    {
+    function multiCall(
+        address[] memory _targets,
+        bytes32[] memory,
+        bytes[] memory _datas
+    ) external onlyDelegatecall {
         for (uint256 i; i < _targets.length; i++) {
             (bool success, ) = _targets[i].call(_datas[i]);
             require(success, "Call failed");

@@ -1,4 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { constants, utils } from "ethers";
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import {
@@ -54,11 +55,9 @@ describe("FuruGelato", function () {
     const actionD = await actionF.deploy();
     const dsProxyFactoryD = await dsProxyFactoryF.deploy();
     const dsGuardD = await dsGuardF.deploy();
-    const taskTimerD = await taskTimerF.deploy(
-      actionD.address,
-      furuGelatoD.address,
-      180
-    );
+    const taskTimerD = await taskTimerF
+      .connect(owner)
+      .deploy(actionD.address, furuGelatoD.address, 180);
     const fooD = await fooF.deploy();
 
     const taskHandlerD = await taskHandlerF.deploy(furuGelatoD.address);
@@ -129,9 +128,11 @@ describe("FuruGelato", function () {
 
   it("check create and cancel task", async () => {
     const fooData = foo.interface.encodeFunctionData("bar");
+    const fooConfig = utils.hexlify(constants.MaxUint256);
     const fooTarget = foo.address;
     const actionData = action.interface.encodeFunctionData("multiCall", [
       [fooTarget],
+      [fooConfig],
       [fooData],
     ]);
     const dsCreateTask = taskHandler.interface.encodeFunctionData(
@@ -166,12 +167,13 @@ describe("FuruGelato", function () {
   it("exec when condition passes", async () => {
     expect(await foo.ok()).to.be.false;
     const fooData = foo.interface.encodeFunctionData("bar");
+    const fooConfig = utils.hexlify(constants.MaxUint256);
     const fooTarget = foo.address;
     const actionData = action.interface.encodeFunctionData("multiCall", [
       [fooTarget],
+      [fooConfig],
       [fooData],
     ]);
-    const target = taskTimer.address;
     const fee = ethers.utils.parseEther("1");
 
     await expect(
@@ -184,6 +186,39 @@ describe("FuruGelato", function () {
 
     await network.provider.send("evm_increaseTime", [THREE_MIN]);
     await network.provider.send("evm_mine", []);
+
+    await furuGelato
+      .connect(executor)
+      .exec(fee, dsProxy.address, taskTimer.address, actionData);
+
+    expect(await foo.ok()).to.be.true;
+  });
+
+  it("exec again with modified period", async () => {
+    const fooData = foo.interface.encodeFunctionData("bar");
+    const fooConfig = utils.hexlify(constants.MaxUint256);
+    const fooTarget = foo.address;
+    const actionData = action.interface.encodeFunctionData("multiCall", [
+      [fooTarget],
+      [fooConfig],
+      [fooData],
+    ]);
+    const fee = ethers.utils.parseEther("1");
+
+    const ONE_MIN = 60;
+
+    await network.provider.send("evm_increaseTime", [ONE_MIN]);
+    await network.provider.send("evm_mine", []);
+
+    await expect(
+      furuGelato
+        .connect(executor)
+        .exec(fee, dsProxy.address, taskTimer.address, actionData)
+    ).to.be.revertedWith("Not yet");
+
+    await expect(taskTimer.connect(owner).setPeriod(ONE_MIN))
+      .to.emit(taskTimer, "PeriodSet")
+      .withArgs(ONE_MIN);
 
     await furuGelato
       .connect(executor)
