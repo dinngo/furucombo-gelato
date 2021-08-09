@@ -9,10 +9,11 @@ import {
 import {IDSProxy} from "./interfaces/IDSProxy.sol";
 import {IProxy} from "./interfaces/IProxy.sol";
 import {Resolver} from "./Resolver.sol";
+import {ResolverWhitelist} from "./ResolverWhitelist.sol";
 import {GelatoBytes} from "./GelatoBytes.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 
-contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
+contract FuruGelato is Ownable, Gelatofied, DSProxyTask, ResolverWhitelist {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using GelatoBytes for bytes;
 
@@ -52,8 +53,10 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
         emit LogFundsDeposited(msg.sender, msg.value);
     }
 
+    /// Task related
     function createTask(address _resolverAddress, bytes calldata _resolverData)
         external
+        isValidResolver(_resolverAddress)
     {
         bytes32 taskId = getTaskId(msg.sender, _resolverAddress, _resolverData);
 
@@ -123,16 +126,6 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
         emit ExecSuccess(_fee, ETH, _proxy, taskId);
     }
 
-    function withdrawFunds(uint256 _amount, address payable _receiver)
-        external
-        onlyOwner
-    {
-        (bool success, ) = _receiver.call{value: _amount}("");
-        require(success, "FuruGelato: withdrawFunds: Withdraw funds failed");
-
-        emit LogFundsWithdrawn(msg.sender, _amount, _receiver);
-    }
-
     function getTaskIdsByUser(address _taskCreator)
         external
         view
@@ -146,5 +139,16 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask {
         }
 
         return taskIds;
+    }
+
+    /// Funds related
+    function withdrawFunds(uint256 _amount, address payable _receiver)
+        external
+        onlyOwner
+    {
+        (bool success, ) = _receiver.call{value: _amount}("");
+        require(success, "FuruGelato: withdrawFunds: Withdraw funds failed");
+
+        emit LogFundsWithdrawn(msg.sender, _amount, _receiver);
     }
 }

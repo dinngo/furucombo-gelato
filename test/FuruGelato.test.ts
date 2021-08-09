@@ -88,6 +88,10 @@ describe("FuruGelato", function () {
       taskTimerD.address
     )) as TaskTimer;
 
+    await expect(furuGelato.connect(owner).registerResolver(taskTimer.address))
+      .to.emit(furuGelato, "ResolverWhitelistAdded")
+      .withArgs(taskTimer.address);
+
     foo = (await ethers.getContractAt("Foo", fooD.address)) as Foo;
 
     taskHandler = (await ethers.getContractAt(
