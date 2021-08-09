@@ -9,25 +9,32 @@ contract ResolverWhitelist is Ownable {
     event ResolverWhitelistAdded(address resolverAddress);
     event ResolverWhitelistRemoved(address resolverAddress);
 
-    modifier isValidResolver(address _resolver) {
-        require(_whitelistedResolvers[_resolver], "Invalid resolver");
+    modifier onlyValidResolver(address _resolverAddress) {
+        require(isValidResolver(_resolverAddress), "Invalid resolver");
         _;
     }
 
-    /// Resolver related
     function registerResolver(address _resolverAddress) external onlyOwner {
         _whitelistedResolvers[_resolverAddress] = true;
 
         emit ResolverWhitelistAdded(_resolverAddress);
     }
 
-    function unregisterResolver(address _resolverAddress) external onlyOwner {
-        require(
-            _whitelistedResolvers[_resolverAddress],
-            "Resolver not registered"
-        );
+    function unregisterResolver(address _resolverAddress)
+        external
+        onlyOwner
+        onlyValidResolver(_resolverAddress)
+    {
         _whitelistedResolvers[_resolverAddress] = false;
 
         emit ResolverWhitelistRemoved(_resolverAddress);
+    }
+
+    function isValidResolver(address _resolverAddress)
+        public
+        view
+        returns (bool)
+    {
+        return _whitelistedResolvers[_resolverAddress];
     }
 }

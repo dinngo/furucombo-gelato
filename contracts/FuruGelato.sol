@@ -10,10 +10,17 @@ import {IDSProxy} from "./interfaces/IDSProxy.sol";
 import {IProxy} from "./interfaces/IProxy.sol";
 import {Resolver} from "./Resolver.sol";
 import {ResolverWhitelist} from "./ResolverWhitelist.sol";
+import {TaskBlacklist} from "./TaskBlacklist.sol";
 import {GelatoBytes} from "./GelatoBytes.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 
-contract FuruGelato is Ownable, Gelatofied, DSProxyTask, ResolverWhitelist {
+contract FuruGelato is
+    Ownable,
+    Gelatofied,
+    DSProxyTask,
+    ResolverWhitelist,
+    TaskBlacklist
+{
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using GelatoBytes for bytes;
 
@@ -56,7 +63,7 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask, ResolverWhitelist {
     /// Task related
     function createTask(address _resolverAddress, bytes calldata _resolverData)
         external
-        isValidResolver(_resolverAddress)
+        onlyValidResolver(_resolverAddress)
     {
         bytes32 taskId = getTaskId(msg.sender, _resolverAddress, _resolverData);
 
@@ -104,6 +111,7 @@ contract FuruGelato is Ownable, Gelatofied, DSProxyTask, ResolverWhitelist {
         bytes calldata _resolverData
     ) external gelatofy(_fee, ETH) {
         bytes32 taskId = getTaskId(_proxy, _resolverAddress, _resolverData);
+        require(isValidTask(taskId), "FuruGelato: exec: invalid task");
         address actions = Resolver(_resolverAddress).action();
 
         (bool ok, bytes memory executionData) =
