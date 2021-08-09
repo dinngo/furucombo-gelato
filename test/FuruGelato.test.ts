@@ -178,7 +178,7 @@ describe("FuruGelato", function () {
       furuGelato
         .connect(executor)
         .exec(fee, dsProxy.address, taskTimer.address, actionData)
-    ).to.be.revertedWith("Checker failed");
+    ).to.be.revertedWith("Not yet");
 
     const THREE_MIN = 3 * 60;
 

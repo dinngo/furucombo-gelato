@@ -36,37 +36,38 @@ contract TaskTimer is Resolver, DSProxyTask {
         return (_isReady(task), _resolverData);
     }
 
-    function onCreateTask(address _taskCreator, bytes calldata _resolverData)
+    function onCreateTask(address _taskCreator, bytes calldata _executionData)
         external
         override
         onlyFuruGelato
         returns (bool)
     {
-        bytes32 task = getTaskId(_taskCreator, address(this), _resolverData);
+        bytes32 task = getTaskId(_taskCreator, address(this), _executionData);
         lastExecTimes[task] = block.timestamp;
 
         return true;
     }
 
-    function onCancelTask(address _taskCreator, bytes calldata _resolverData)
+    function onCancelTask(address _taskCreator, bytes calldata _executionData)
         external
         override
         onlyFuruGelato
         returns (bool)
     {
-        bytes32 taskId = getTaskId(_taskCreator, address(this), _resolverData);
+        bytes32 taskId = getTaskId(_taskCreator, address(this), _executionData);
         delete lastExecTimes[taskId];
 
         return true;
     }
 
-    function onExec(address _taskExecutor, bytes calldata _resolverData)
+    function onExec(address _taskExecutor, bytes calldata _executionData)
         external
         override
         onlyFuruGelato
         returns (bool)
     {
-        bytes32 taskId = getTaskId(_taskExecutor, address(this), _resolverData);
+        bytes32 taskId =
+            getTaskId(_taskExecutor, address(this), _executionData);
         _reset(taskId);
 
         return true;

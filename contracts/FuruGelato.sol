@@ -32,13 +32,13 @@ contract FuruGelato is
         address indexed taskCreator,
         bytes32 taskId,
         address indexed resolverAddress,
-        bytes resolverData
+        bytes executionData
     );
     event TaskCancelled(
         address indexed taskCreator,
         bytes32 taskId,
         address indexed resolverAddress,
-        bytes resolverData
+        bytes executionData
     );
     event ExecSuccess(
         uint256 indexed txFee,
@@ -65,28 +65,29 @@ contract FuruGelato is
         external
         onlyValidResolver(_resolverAddress)
     {
-        bytes32 taskId = getTaskId(msg.sender, _resolverAddress, _resolverData);
-
+        (, bytes memory executionData) =
+            Resolver(_resolverAddress).checker(msg.sender, _resolverData);
+        bytes32 taskId = getTaskId(msg.sender, _resolverAddress, executionData);
         require(
             taskCreator[taskId] == address(0),
             "FuruGelato: createTask: Sender already started task"
         );
-
         _createdTasks[msg.sender].add(taskId);
         taskCreator[taskId] = msg.sender;
 
         require(
-            Resolver(_resolverAddress).onCreateTask(msg.sender, _resolverData),
+            Resolver(_resolverAddress).onCreateTask(msg.sender, executionData),
             "FuruGelato: createTask: onCreateTask() failed"
         );
 
-        emit TaskCreated(msg.sender, taskId, _resolverAddress, _resolverData);
+        emit TaskCreated(msg.sender, taskId, _resolverAddress, executionData);
     }
 
-    function cancelTask(address _resolverAddress, bytes calldata _resolverData)
+    function cancelTask(address _resolverAddress, bytes calldata _executionData)
         external
     {
-        bytes32 taskId = getTaskId(msg.sender, _resolverAddress, _resolverData);
+        bytes32 taskId =
+            getTaskId(msg.sender, _resolverAddress, _executionData);
 
         require(
             taskCreator[taskId] == msg.sender,
@@ -97,37 +98,39 @@ contract FuruGelato is
         delete taskCreator[taskId];
 
         require(
-            Resolver(_resolverAddress).onCancelTask(msg.sender, _resolverData),
+            Resolver(_resolverAddress).onCancelTask(msg.sender, _executionData),
             "FuruGelato: cancelTask: onCancelTask() failed"
         );
 
-        emit TaskCancelled(msg.sender, taskId, _resolverAddress, _resolverData);
+        emit TaskCancelled(
+            msg.sender,
+            taskId,
+            _resolverAddress,
+            _executionData
+        );
     }
 
     function exec(
         uint256 _fee,
         address _proxy,
         address _resolverAddress,
-        bytes calldata _resolverData
+        bytes calldata _executionData
     ) external gelatofy(_fee, ETH) {
-        bytes32 taskId = getTaskId(_proxy, _resolverAddress, _resolverData);
+        bytes32 taskId = getTaskId(_proxy, _resolverAddress, _executionData);
         require(isValidTask(taskId), "FuruGelato: exec: invalid task");
-        address actions = Resolver(_resolverAddress).action();
+        address action = Resolver(_resolverAddress).action();
 
-        (bool ok, bytes memory executionData) =
-            Resolver(_resolverAddress).checker(_proxy, _resolverData);
-        require(ok, "FuruGelato: exec: Checker failed");
         require(
             _proxy == taskCreator[taskId],
             "FuruGelato: exec: No task found"
         );
 
-        try IDSProxy(_proxy).execute(actions, executionData) {} catch {
+        try IDSProxy(_proxy).execute(action, _executionData) {} catch {
             revert("FuruGelato: exec: execute failed");
         }
 
         require(
-            Resolver(_resolverAddress).onExec(_proxy, _resolverData),
+            Resolver(_resolverAddress).onExec(_proxy, _executionData),
             "FuruGelato: exec: onExec() failed"
         );
 
