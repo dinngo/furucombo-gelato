@@ -1,17 +1,35 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.0;
+pragma solidity ^0.8.6;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Resolver} from "./Resolver.sol";
-import {FuruGelato} from "./FuruGelato.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 
 contract TaskTimer is Resolver, DSProxyTask, Ownable {
     mapping(bytes32 => uint256) public lastExecTimes;
 
     address public immutable furuGelato;
+    address public immutable aFurucombo;
+    address public immutable aTrevi;
     uint256 public period;
+
+    bytes4 private constant _HARVEST_SIG =
+        bytes4(
+            keccak256(
+                bytes("harvestAngelsAndCharge(address,address[],address[])")
+            )
+        );
+    bytes4 private constant _EXEC_SIG =
+        bytes4(
+            keccak256(
+                bytes(
+                    "injectAndBatchExec(address[],uint256[],address[],address[],bytes32[],bytes[])"
+                )
+            )
+        );
+    bytes4 private constant _DEPOSIT_SIG =
+        bytes4(keccak256(bytes("deposit(address,uint256)")));
 
     event PeriodSet(uint256 period);
 
@@ -23,9 +41,13 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
     constructor(
         address _action,
         address _furuGelato,
+        address _aFurucombo,
+        address _aTrevi,
         uint256 _period
     ) Resolver(_action) {
         furuGelato = _furuGelato;
+        aFurucombo = _aFurucombo;
+        aTrevi = _aTrevi;
         period = _period;
     }
 
@@ -105,12 +127,15 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
         view
         returns (bool)
     {
-        this;
-        (address[] memory tos, bytes32[] memory configs, bytes[] memory datas) =
+        (address[] memory tos, , bytes[] memory datas) =
             abi.decode(data, (address[], bytes32[], bytes[]));
-        tos;
-        configs;
-        datas;
+        require(tos.length == 3, "Invalid tos length");
+        require(tos[0] == aTrevi, "Invalid tos[0]");
+        require(tos[1] == aFurucombo, "Invalid tos[1]");
+        require(tos[2] == aTrevi, "Invalid tos[2]");
+        require(bytes4(datas[0]) == _HARVEST_SIG, "Invalid datas[0]");
+        require(bytes4(datas[1]) == _EXEC_SIG, "Invalid datas[1]");
+        require(bytes4(datas[2]) == _DEPOSIT_SIG, "Invalid datas[2]");
 
         return true;
     }

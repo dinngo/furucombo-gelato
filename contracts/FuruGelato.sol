@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.0;
+pragma solidity ^0.8.0;
 
 import {Gelatofied} from "./Gelatofied.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -7,11 +7,9 @@ import {
     EnumerableSet
 } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IDSProxy} from "./interfaces/IDSProxy.sol";
-import {IProxy} from "./interfaces/IProxy.sol";
 import {Resolver} from "./Resolver.sol";
 import {ResolverWhitelist} from "./ResolverWhitelist.sol";
 import {TaskBlacklist} from "./TaskBlacklist.sol";
-import {GelatoBytes} from "./GelatoBytes.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 
 contract FuruGelato is
@@ -22,7 +20,6 @@ contract FuruGelato is
     TaskBlacklist
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
-    using GelatoBytes for bytes;
 
     string public constant VERSION = "0.0.1";
     mapping(bytes32 => address) public taskCreator;

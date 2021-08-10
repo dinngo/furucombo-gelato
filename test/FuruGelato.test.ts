@@ -5,6 +5,8 @@ import { ethers, network } from "hardhat";
 import {
   FuruGelato,
   ActionMock,
+  AFurucomboMock,
+  ATreviMock,
   CreateTaskHandler,
   TaskTimer,
   IDSProxy,
@@ -27,6 +29,8 @@ describe("FuruGelato", function () {
   let dsProxyFactory: DSProxyFactory;
   let furuGelato: FuruGelato;
   let action: ActionMock;
+  let aFurucombo: AFurucomboMock;
+  let aTrevi: ATreviMock;
 
   let taskHandler: CreateTaskHandler;
   let taskTimer: TaskTimer;
@@ -38,6 +42,8 @@ describe("FuruGelato", function () {
 
     const furuGelatoF = await ethers.getContractFactory("FuruGelato");
     const actionF = await ethers.getContractFactory("ActionMock");
+    const aFurucomboF = await ethers.getContractFactory("AFurucomboMock");
+    const aTreviF = await ethers.getContractFactory("ATreviMock");
     const dsProxyFactoryF = await ethers.getContractFactory("DSProxyFactory");
     const dsGuardF = await ethers.getContractFactory("DSGuard");
     const dsProxyF = await ethers.getContractFactory("DSProxy");
@@ -53,11 +59,19 @@ describe("FuruGelato", function () {
 
     const furuGelatoD = await furuGelatoF.connect(owner).deploy(gelatoAddress);
     const actionD = await actionF.deploy();
+    const aFurucomboD = await aFurucomboF.deploy();
+    const aTreviD = await aTreviF.deploy();
     const dsProxyFactoryD = await dsProxyFactoryF.deploy();
     const dsGuardD = await dsGuardF.deploy();
     const taskTimerD = await taskTimerF
       .connect(owner)
-      .deploy(actionD.address, furuGelatoD.address, 180);
+      .deploy(
+        actionD.address,
+        furuGelatoD.address,
+        aFurucomboD.address,
+        aTreviD.address,
+        180
+      );
     const fooD = await fooF.deploy();
 
     const taskHandlerD = await taskHandlerF.deploy(furuGelatoD.address);
@@ -81,6 +95,16 @@ describe("FuruGelato", function () {
       "ActionMock",
       actionD.address
     )) as ActionMock;
+
+    aFurucombo = (await ethers.getContractAt(
+      "AFurucomboMock",
+      aFurucomboD.address
+    )) as AFurucomboMock;
+
+    aTrevi = (await ethers.getContractAt(
+      "ATreviMock",
+      aTreviD.address
+    )) as ATreviMock;
 
     taskTimer = (await ethers.getContractAt(
       "TaskTimer",
@@ -126,7 +150,7 @@ describe("FuruGelato", function () {
     });
   });
 
-  it("check create and cancel task", async () => {
+  it("create invalid task should fail", async () => {
     const fooData = foo.interface.encodeFunctionData("bar");
     const fooConfig = utils.hexlify(constants.MaxUint256);
     const fooTarget = foo.address;
@@ -134,6 +158,34 @@ describe("FuruGelato", function () {
       [fooTarget],
       [fooConfig],
       [fooData],
+    ]);
+    const dsCreateTask = taskHandler.interface.encodeFunctionData(
+      "createTask",
+      [taskTimer.address, actionData]
+    );
+    await expect(
+      dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
+    ).to.be.revertedWith("Invalid tos length");
+  });
+
+  it("check create and cancel task", async () => {
+    const config = utils.hexlify(constants.MaxUint256);
+    const data0 = aTrevi.interface.encodeFunctionData(
+      "harvestAngelsAndCharge",
+      [aTrevi.address, [], []]
+    );
+    const data1 = aFurucombo.interface.encodeFunctionData(
+      "injectAndBatchExec",
+      [[], [], [], [], [], []]
+    );
+    const data2 = aTrevi.interface.encodeFunctionData("deposit", [
+      aTrevi.address,
+      0,
+    ]);
+    const actionData = action.interface.encodeFunctionData("multiCall", [
+      [aTrevi.address, aFurucombo.address, aTrevi.address],
+      [config, config, config],
+      [data0, data1, data2],
     ]);
     const dsCreateTask = taskHandler.interface.encodeFunctionData(
       "createTask",
@@ -165,14 +217,25 @@ describe("FuruGelato", function () {
   });
 
   it("exec when condition passes", async () => {
-    expect(await foo.ok()).to.be.false;
-    const fooData = foo.interface.encodeFunctionData("bar");
-    const fooConfig = utils.hexlify(constants.MaxUint256);
-    const fooTarget = foo.address;
+    expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("0"));
+    expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("0"));
+    const config = utils.hexlify(constants.MaxUint256);
+    const data0 = aTrevi.interface.encodeFunctionData(
+      "harvestAngelsAndCharge",
+      [aTrevi.address, [], []]
+    );
+    const data1 = aFurucombo.interface.encodeFunctionData(
+      "injectAndBatchExec",
+      [[], [], [], [], [], []]
+    );
+    const data2 = aTrevi.interface.encodeFunctionData("deposit", [
+      aTrevi.address,
+      0,
+    ]);
     const actionData = action.interface.encodeFunctionData("multiCall", [
-      [fooTarget],
-      [fooConfig],
-      [fooData],
+      [aTrevi.address, aFurucombo.address, aTrevi.address],
+      [config, config, config],
+      [data0, data1, data2],
     ]);
     const fee = ethers.utils.parseEther("1");
 
@@ -191,17 +254,28 @@ describe("FuruGelato", function () {
       .connect(executor)
       .exec(fee, dsProxy.address, taskTimer.address, actionData);
 
-    expect(await foo.ok()).to.be.true;
+    expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("2"));
+    expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("1"));
   });
 
   it("exec again with modified period", async () => {
-    const fooData = foo.interface.encodeFunctionData("bar");
-    const fooConfig = utils.hexlify(constants.MaxUint256);
-    const fooTarget = foo.address;
+    const config = utils.hexlify(constants.MaxUint256);
+    const data0 = aTrevi.interface.encodeFunctionData(
+      "harvestAngelsAndCharge",
+      [aTrevi.address, [], []]
+    );
+    const data1 = aFurucombo.interface.encodeFunctionData(
+      "injectAndBatchExec",
+      [[], [], [], [], [], []]
+    );
+    const data2 = aTrevi.interface.encodeFunctionData("deposit", [
+      aTrevi.address,
+      0,
+    ]);
     const actionData = action.interface.encodeFunctionData("multiCall", [
-      [fooTarget],
-      [fooConfig],
-      [fooData],
+      [aTrevi.address, aFurucombo.address, aTrevi.address],
+      [config, config, config],
+      [data0, data1, data2],
     ]);
     const fee = ethers.utils.parseEther("1");
 
@@ -224,6 +298,7 @@ describe("FuruGelato", function () {
       .connect(executor)
       .exec(fee, dsProxy.address, taskTimer.address, actionData);
 
-    expect(await foo.ok()).to.be.true;
+    expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("4"));
+    expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("2"));
   });
 });
