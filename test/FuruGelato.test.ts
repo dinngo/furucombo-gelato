@@ -168,6 +168,43 @@ describe("FuruGelato", function () {
     ).to.be.revertedWith("Invalid tos length");
   });
 
+  it("create on invalid resolver should fail", async () => {
+    await expect(
+      furuGelato.connect(owner).unregisterResolver(taskTimer.address)
+    )
+      .to.emit(furuGelato, "ResolverWhitelistRemoved")
+      .withArgs(taskTimer.address);
+    const config = utils.hexlify(constants.MaxUint256);
+    const data0 = aTrevi.interface.encodeFunctionData(
+      "harvestAngelsAndCharge",
+      [aTrevi.address, [], []]
+    );
+    const data1 = aFurucombo.interface.encodeFunctionData(
+      "injectAndBatchExec",
+      [[], [], [], [], [], []]
+    );
+    const data2 = aTrevi.interface.encodeFunctionData("deposit", [
+      aTrevi.address,
+      0,
+    ]);
+    const actionData = action.interface.encodeFunctionData("multiCall", [
+      [aTrevi.address, aFurucombo.address, aTrevi.address],
+      [config, config, config],
+      [data0, data1, data2],
+    ]);
+    const dsCreateTask = taskHandler.interface.encodeFunctionData(
+      "createTask",
+      [taskTimer.address, actionData]
+    );
+    await expect(
+      dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
+    ).to.be.revertedWith("Invalid resolver");
+
+    await expect(furuGelato.connect(owner).registerResolver(taskTimer.address))
+      .to.emit(furuGelato, "ResolverWhitelistAdded")
+      .withArgs(taskTimer.address);
+  });
+
   it("check create and cancel task", async () => {
     const config = utils.hexlify(constants.MaxUint256);
     const data0 = aTrevi.interface.encodeFunctionData(
@@ -258,6 +295,55 @@ describe("FuruGelato", function () {
     expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("1"));
   });
 
+  it("should revert when resolver unregistered", async () => {
+    const config = utils.hexlify(constants.MaxUint256);
+    const data0 = aTrevi.interface.encodeFunctionData(
+      "harvestAngelsAndCharge",
+      [aTrevi.address, [], []]
+    );
+    const data1 = aFurucombo.interface.encodeFunctionData(
+      "injectAndBatchExec",
+      [[], [], [], [], [], []]
+    );
+    const data2 = aTrevi.interface.encodeFunctionData("deposit", [
+      aTrevi.address,
+      0,
+    ]);
+    const actionData = action.interface.encodeFunctionData("multiCall", [
+      [aTrevi.address, aFurucombo.address, aTrevi.address],
+      [config, config, config],
+      [data0, data1, data2],
+    ]);
+    const fee = ethers.utils.parseEther("1");
+    await expect(
+      furuGelato.connect(owner).unregisterResolver(taskTimer.address)
+    )
+      .to.emit(furuGelato, "ResolverWhitelistRemoved")
+      .withArgs(taskTimer.address);
+
+    const THREE_MIN = 3 * 60;
+
+    await network.provider.send("evm_increaseTime", [THREE_MIN]);
+    await network.provider.send("evm_mine", []);
+
+    await expect(
+      furuGelato
+        .connect(executor)
+        .exec(fee, dsProxy.address, taskTimer.address, actionData)
+    ).to.be.revertedWith("Invalid resolver");
+
+    await expect(furuGelato.connect(owner).registerResolver(taskTimer.address))
+      .to.emit(furuGelato, "ResolverWhitelistAdded")
+      .withArgs(taskTimer.address);
+
+    await furuGelato
+      .connect(executor)
+      .exec(fee, dsProxy.address, taskTimer.address, actionData);
+
+    expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("4"));
+    expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("2"));
+  });
+
   it("exec again with modified period", async () => {
     const config = utils.hexlify(constants.MaxUint256);
     const data0 = aTrevi.interface.encodeFunctionData(
@@ -298,7 +384,7 @@ describe("FuruGelato", function () {
       .connect(executor)
       .exec(fee, dsProxy.address, taskTimer.address, actionData);
 
-    expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("4"));
-    expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("2"));
+    expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("6"));
+    expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("3"));
   });
 });
