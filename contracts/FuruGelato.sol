@@ -112,7 +112,7 @@ contract FuruGelato is
         address _proxy,
         address _resolverAddress,
         bytes calldata _executionData
-    ) external gelatofy(_fee, ETH) {
+    ) external gelatofy(_fee, ETH) onlyValidResolver(_resolverAddress) {
         bytes32 taskId = getTaskId(_proxy, _resolverAddress, _executionData);
         require(isValidTask(taskId), "FuruGelato: exec: invalid task");
         address action = Resolver(_resolverAddress).action();
