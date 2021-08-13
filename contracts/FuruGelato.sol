@@ -12,6 +12,7 @@ import {ResolverWhitelist} from "./ResolverWhitelist.sol";
 import {TaskBlacklist} from "./TaskBlacklist.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 
+/// @title The task manager
 contract FuruGelato is
     Ownable,
     Gelatofied,
@@ -22,7 +23,9 @@ contract FuruGelato is
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     string public constant VERSION = "0.0.1";
+    /// @notice The creator of the task
     mapping(bytes32 => address) public taskCreator;
+    /// @notice The total task list created by user
     mapping(address => EnumerableSet.Bytes32Set) internal _createdTasks;
 
     event TaskCreated(
@@ -57,11 +60,19 @@ contract FuruGelato is
         emit LogFundsDeposited(msg.sender, msg.value);
     }
 
-    /// Task related
+    // Task related
+    /// @notice Create the task through the given resolver. The resolver should
+    /// be validated through a whitelist.
+    /// @param _resolverAddress The resolver to generate the task execution
+    /// data.
+    /// @param _resolverData The data to be provided to the resolver for data
+    /// generation.
     function createTask(address _resolverAddress, bytes calldata _resolverData)
         external
         onlyValidResolver(_resolverAddress)
     {
+        // The _resolverData is passed to the resolver to generate the
+        // execution data for the task.
         (, bytes memory executionData) =
             Resolver(_resolverAddress).checker(msg.sender, _resolverData);
         bytes32 taskId = getTaskId(msg.sender, _resolverAddress, executionData);
@@ -72,6 +83,7 @@ contract FuruGelato is
         _createdTasks[msg.sender].add(taskId);
         taskCreator[taskId] = msg.sender;
 
+        // Call resolver's `onCreateTask()`
         require(
             Resolver(_resolverAddress).onCreateTask(msg.sender, executionData),
             "FuruGelato: createTask: onCreateTask() failed"
@@ -80,6 +92,10 @@ contract FuruGelato is
         emit TaskCreated(msg.sender, taskId, _resolverAddress, executionData);
     }
 
+    /// @notice Cancel the task that was created through the given resolver.
+    /// The resolver should be validated through a whitelist.
+    /// @param _resolverAddress The resolver that created the task.
+    /// @param _executionData The task data to be canceled.
     function cancelTask(address _resolverAddress, bytes calldata _executionData)
         external
     {
@@ -107,6 +123,11 @@ contract FuruGelato is
         );
     }
 
+    /// @notice Execute the task created by `_proxy`through the given resolver.
+    /// The resolver should be validated through a whitelist.
+    /// @param _fee The fee to be paid to `gelato`
+    /// @param _resolverAddress The resolver that created the task.
+    /// @param _executionData The execution payload.
     function exec(
         uint256 _fee,
         address _proxy,
@@ -115,6 +136,7 @@ contract FuruGelato is
     ) external gelatofy(_fee, ETH) onlyValidResolver(_resolverAddress) {
         bytes32 taskId = getTaskId(_proxy, _resolverAddress, _executionData);
         require(isValidTask(taskId), "FuruGelato: exec: invalid task");
+        // Fetch the action to be used in dsproxy's `execute()`.
         address action = Resolver(_resolverAddress).action();
 
         require(
@@ -134,6 +156,9 @@ contract FuruGelato is
         emit ExecSuccess(_fee, ETH, _proxy, taskId);
     }
 
+    /// @notice Return the tasks created by the user.
+    /// @param _taskCreator The user to be queried.
+    /// @return The task list.
     function getTaskIdsByUser(address _taskCreator)
         external
         view
@@ -149,7 +174,10 @@ contract FuruGelato is
         return taskIds;
     }
 
-    /// Funds related
+    // Funds related
+    /// @notice Withdraw the deposited funds that is used for paying fee.
+    /// @param _amount The amount to be withdrawn.
+    /// @param _receiver The address to be withdrawn to.
     function withdrawFunds(uint256 _amount, address payable _receiver)
         external
         onlyOwner

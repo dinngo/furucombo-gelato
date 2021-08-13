@@ -6,7 +6,10 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Resolver} from "./Resolver.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 
+/// @title Task timer is a implementation of resolver for generating tasks
+/// that can be executed repeatedly after a specific time period.
 contract TaskTimer is Resolver, DSProxyTask, Ownable {
+    /// @notice The last execution time of the task.
     mapping(bytes32 => uint256) public lastExecTimes;
 
     address public immutable furuGelato;
@@ -14,22 +17,17 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
     address public immutable aTrevi;
     uint256 public period;
 
+    // solhint-disable
+    // prettier-ignore
     bytes4 private constant _HARVEST_SIG =
-        bytes4(
-            keccak256(
-                bytes("harvestAngelsAndCharge(address,address[],address[])")
-            )
-        );
+        bytes4(keccak256(bytes("harvestAngelsAndCharge(address,address[],address[])")));
+    // prettier-ignore
     bytes4 private constant _EXEC_SIG =
-        bytes4(
-            keccak256(
-                bytes(
-                    "injectAndBatchExec(address[],uint256[],address[],address[],bytes32[],bytes[])"
-                )
-            )
-        );
+        bytes4(keccak256(bytes("injectAndBatchExec(address[],uint256[],address[],address[],bytes32[],bytes[])")));
+    // prettier-ignore
     bytes4 private constant _DEPOSIT_SIG =
         bytes4(keccak256(bytes("deposit(address,uint256)")));
+    // solhint-enable
 
     event PeriodSet(uint256 period);
 
@@ -51,6 +49,14 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
         period = _period;
     }
 
+    /// @notice Checker can generate the execution payload for the given data
+    /// that is available for an user, and also examines if the task can be
+    /// executed.
+    /// @param _taskCreator The creator of the task.
+    /// @param _resolverData The data for resolver to generate the task.
+    /// Currently identical to the execution data of DSProxy.
+    /// @return If the task can be executed.
+    /// @return The generated execution data for the given `_resolverData`.
     function checker(address _taskCreator, bytes calldata _resolverData)
         external
         view
@@ -60,10 +66,15 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
         // Verify if _resolverData is valid
         require(_isValidResolverData(_resolverData[4:]), "Data not valid");
 
+        // Use `_resolverData` to generate task Id since that exection data
+        // is resolver data in TaskTimee's implementation.
         bytes32 task = getTaskId(_taskCreator, address(this), _resolverData);
         return (_isReady(task), _resolverData);
     }
 
+    /// @notice Update the last execution time to now when a task is created.
+    /// @param _taskCreator The creator of the task.
+    /// @param _executionData The execution data of the task.
     function onCreateTask(address _taskCreator, bytes calldata _executionData)
         external
         override
@@ -76,6 +87,9 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
         return true;
     }
 
+    /// @notice Delete the last execution time to now when a task is canceled.
+    /// @param _taskCreator The creator of the task.
+    /// @param _executionData The execution data of the task.
     function onCancelTask(address _taskCreator, bytes calldata _executionData)
         external
         override
@@ -88,19 +102,23 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
         return true;
     }
 
-    function onExec(address _taskExecutor, bytes calldata _executionData)
+    /// @notice Update the last execution time to now when a task is executed.
+    /// @param _taskCreator The creator of the task.
+    /// @param _executionData The execution data of the task.
+    function onExec(address _taskCreator, bytes calldata _executionData)
         external
         override
         onlyFuruGelato
         returns (bool)
     {
-        bytes32 taskId =
-            getTaskId(_taskExecutor, address(this), _executionData);
+        bytes32 taskId = getTaskId(_taskCreator, address(this), _executionData);
         _reset(taskId);
 
         return true;
     }
 
+    /// @notice Set the new time period for task execution.
+    /// @param _period The new time period.
     function setPeriod(uint256 _period) external onlyOwner {
         period = _period;
 

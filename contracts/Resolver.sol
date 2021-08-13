@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.6;
+pragma solidity ^0.8.0;
 
 abstract contract Resolver {
     address public immutable action;
@@ -34,12 +34,12 @@ abstract contract Resolver {
         return true;
     }
 
-    function onExec(address taskExecutor, bytes calldata executionData)
+    function onExec(address taskCreator, bytes calldata executionData)
         external
         virtual
         returns (bool)
     {
-        taskExecutor;
+        taskCreator;
         executionData;
         return true;
     }
