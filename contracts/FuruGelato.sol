@@ -93,7 +93,6 @@ contract FuruGelato is
     }
 
     /// @notice Cancel the task that was created through the given resolver.
-    /// The resolver should be validated through a whitelist.
     /// @param _resolverAddress The resolver that created the task.
     /// @param _executionData The task data to be canceled.
     function cancelTask(address _resolverAddress, bytes calldata _executionData)
