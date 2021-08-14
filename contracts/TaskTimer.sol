@@ -12,7 +12,6 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
     /// @notice The last execution time of the task.
     mapping(bytes32 => uint256) public lastExecTimes;
 
-    address public immutable furuGelato;
     address public immutable aFurucombo;
     address public immutable aTrevi;
     uint256 public period;
@@ -31,19 +30,13 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
 
     event PeriodSet(uint256 period);
 
-    modifier onlyFuruGelato() {
-        require(msg.sender == furuGelato, "not FuruGelato");
-        _;
-    }
-
     constructor(
         address _action,
         address _furuGelato,
         address _aFurucombo,
         address _aTrevi,
         uint256 _period
-    ) Resolver(_action) {
-        furuGelato = _furuGelato;
+    ) Resolver(_action, _furuGelato) {
         aFurucombo = _aFurucombo;
         aTrevi = _aTrevi;
         period = _period;

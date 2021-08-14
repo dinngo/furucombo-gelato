@@ -3,9 +3,16 @@ pragma solidity ^0.8.0;
 
 abstract contract Resolver {
     address public immutable action;
+    address public immutable furuGelato;
 
-    constructor(address _action) {
+    modifier onlyFuruGelato() {
+        require(msg.sender == furuGelato, "not FuruGelato");
+        _;
+    }
+
+    constructor(address _action, address _furuGelato) {
         action = _action;
+        furuGelato = _furuGelato;
     }
 
     function checker(address taskCreator, bytes calldata resolverData)
@@ -17,6 +24,7 @@ abstract contract Resolver {
     function onCreateTask(address taskCreator, bytes calldata executionData)
         external
         virtual
+        onlyFuruGelato
         returns (bool)
     {
         taskCreator;
@@ -27,6 +35,7 @@ abstract contract Resolver {
     function onCancelTask(address taskCreator, bytes calldata executionData)
         external
         virtual
+        onlyFuruGelato
         returns (bool)
     {
         taskCreator;
@@ -37,6 +46,7 @@ abstract contract Resolver {
     function onExec(address taskCreator, bytes calldata executionData)
         external
         virtual
+        onlyFuruGelato
         returns (bool)
     {
         taskCreator;
