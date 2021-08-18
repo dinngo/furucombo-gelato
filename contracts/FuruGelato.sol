@@ -1,23 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity 0.8.6;
 
-import {Gelatofied} from "./Gelatofied.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {
     EnumerableSet
 } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IDSProxy} from "./interfaces/IDSProxy.sol";
+import {IFuruGelato} from "./interfaces/IFuruGelato.sol";
+import {DSProxyBlacklist} from "./DSProxyBlacklist.sol";
+import {DSProxyTask} from "./DSProxyTask.sol";
+import {Gelatofied} from "./Gelatofied.sol";
 import {Resolver} from "./Resolver.sol";
 import {ResolverWhitelist} from "./ResolverWhitelist.sol";
 import {TaskBlacklist} from "./TaskBlacklist.sol";
-import {DSProxyTask} from "./DSProxyTask.sol";
 
 /// @title The task manager
 contract FuruGelato is
+    IFuruGelato,
     Ownable,
     Gelatofied,
     DSProxyTask,
     ResolverWhitelist,
+    DSProxyBlacklist,
     TaskBlacklist
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -69,7 +73,9 @@ contract FuruGelato is
     /// generation.
     function createTask(address _resolverAddress, bytes calldata _resolverData)
         external
+        override
         onlyValidResolver(_resolverAddress)
+        onlyValidDSProxy(msg.sender)
     {
         // The _resolverData is passed to the resolver to generate the
         // execution data for the task.
@@ -97,6 +103,7 @@ contract FuruGelato is
     /// @param _executionData The task data to be canceled.
     function cancelTask(address _resolverAddress, bytes calldata _executionData)
         external
+        override
     {
         bytes32 taskId =
             getTaskId(msg.sender, _resolverAddress, _executionData);
@@ -132,7 +139,13 @@ contract FuruGelato is
         address _proxy,
         address _resolverAddress,
         bytes calldata _executionData
-    ) external gelatofy(_fee, ETH) onlyValidResolver(_resolverAddress) {
+    )
+        external
+        override
+        gelatofy(_fee, ETH)
+        onlyValidResolver(_resolverAddress)
+        onlyValidDSProxy(_proxy)
+    {
         bytes32 taskId = getTaskId(_proxy, _resolverAddress, _executionData);
         require(isValidTask(taskId), "FuruGelato: exec: invalid task");
         // Fetch the action to be used in dsproxy's `execute()`.
@@ -161,6 +174,7 @@ contract FuruGelato is
     function getTaskIdsByUser(address _taskCreator)
         external
         view
+        override
         returns (bytes32[] memory)
     {
         uint256 length = _createdTasks[_taskCreator].length();
@@ -179,6 +193,7 @@ contract FuruGelato is
     /// @param _receiver The address to be withdrawn to.
     function withdrawFunds(uint256 _amount, address payable _receiver)
         external
+        override
         onlyOwner
     {
         (bool success, ) = _receiver.call{value: _amount}("");
