@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.6;
+pragma solidity 0.8.6;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Resolver} from "./Resolver.sol";
+import {ITaskBlacklist, IDSProxyBlacklist} from "./interfaces/IFuruGelato.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
+import {Resolver} from "./Resolver.sol";
 
 /// @title Task timer is a implementation of resolver for generating tasks
 /// that can be executed repeatedly after a specific time period.
@@ -56,12 +57,19 @@ contract TaskTimer is Resolver, DSProxyTask, Ownable {
         override
         returns (bool, bytes memory)
     {
+        // Verify if _taskCreator is valid
+        require(
+            IDSProxyBlacklist(furuGelato).isValidDSProxy(_taskCreator),
+            "Creator not valid"
+        );
         // Verify if _resolverData is valid
         require(_isValidResolverData(_resolverData[4:]), "Data not valid");
 
         // Use `_resolverData` to generate task Id since that exection data
         // is resolver data in TaskTimee's implementation.
         bytes32 task = getTaskId(_taskCreator, address(this), _resolverData);
+        // Verify if the task is valid
+        require(ITaskBlacklist(furuGelato).isValidTask(task), "Task not valid");
         return (_isReady(task), _resolverData);
     }
 
