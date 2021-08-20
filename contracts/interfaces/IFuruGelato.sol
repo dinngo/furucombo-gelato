@@ -2,6 +2,32 @@
 pragma solidity ^0.8.0;
 
 interface IFuruGelato {
+    event TaskCreated(
+        address indexed taskCreator,
+        bytes32 taskId,
+        address indexed resolverAddress,
+        bytes executionData
+    );
+    event TaskCancelled(
+        address indexed taskCreator,
+        bytes32 taskId,
+        address indexed resolverAddress,
+        bytes executionData
+    );
+    event ExecSuccess(
+        uint256 indexed txFee,
+        address indexed feeToken,
+        address indexed taskExecutor,
+        bytes32 taskId
+    );
+
+    event LogFundsDeposited(address indexed sender, uint256 amount);
+    event LogFundsWithdrawn(
+        address indexed sender,
+        uint256 amount,
+        address receiver
+    );
+
     function createTask(address _resolverAddress, bytes calldata _resolverData)
         external;
 

@@ -32,32 +32,6 @@ contract FuruGelato is
     /// @notice The total task list created by user
     mapping(address => EnumerableSet.Bytes32Set) internal _createdTasks;
 
-    event TaskCreated(
-        address indexed taskCreator,
-        bytes32 taskId,
-        address indexed resolverAddress,
-        bytes executionData
-    );
-    event TaskCancelled(
-        address indexed taskCreator,
-        bytes32 taskId,
-        address indexed resolverAddress,
-        bytes executionData
-    );
-    event ExecSuccess(
-        uint256 indexed txFee,
-        address indexed feeToken,
-        address indexed taskExecutor,
-        bytes32 taskId
-    );
-
-    event LogFundsDeposited(address indexed sender, uint256 amount);
-    event LogFundsWithdrawn(
-        address indexed sender,
-        uint256 amount,
-        address receiver
-    );
-
     constructor(address payable _gelato) Gelatofied(_gelato) {}
 
     receive() external payable {
