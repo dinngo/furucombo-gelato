@@ -192,7 +192,7 @@ describe("FuruGelato", function () {
       ).to.be.revertedWith("Invalid dsProxy");
     });
 
-    it("create an extsted task", async () => {
+    it("create an existed task", async () => {
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
         [resolver.address, actionData]
