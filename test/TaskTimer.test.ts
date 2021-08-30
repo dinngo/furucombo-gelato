@@ -183,6 +183,31 @@ describe("TaskTimer", function () {
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
       ).to.be.revertedWith("Invalid tos length");
     });
+
+    it("create task with wrong function selector should fail", async () => {
+      const config = utils.hexlify(constants.MaxUint256);
+      const data0 = aTrevi.interface.encodeFunctionData(
+        "harvestAngelsAndCharge",
+        [aTrevi.address, [], []]
+      );
+      const data1 = aFurucombo.interface.encodeFunctionData(
+        "injectAndBatchExec",
+        [[], [], [], [], [], []]
+      );
+      const actionDataWrong = action.interface.encodeFunctionData("multiCall", [
+        [aTrevi.address, aFurucombo.address, aTrevi.address],
+        [config, config, config],
+        [data0, data1, data1],
+      ]);
+      const dsCreateTask = taskHandler.interface.encodeFunctionData(
+        "createTask",
+        [taskTimer.address, actionDataWrong]
+      );
+
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
+      ).to.be.revertedWith("Invalid datas");
+    });
   });
 
   describe("onCreateTask", () => {
