@@ -176,6 +176,43 @@ describe("FuruGelato", function () {
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
       ).to.be.revertedWith("Invalid resolver");
     });
+
+    it("create by an invalid DSProxy", async () => {
+      await expect(furuGelato.connect(owner).banDSProxy(dsProxy.address))
+        .to.emit(furuGelato, "DSProxyBlacklistAdded")
+        .withArgs(dsProxy.address);
+
+      const dsCreateTask = taskHandler.interface.encodeFunctionData(
+        "createTask",
+        [resolver.address, actionData]
+      );
+
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
+      ).to.be.revertedWith("Invalid dsProxy");
+    });
+
+    it("create an existed task", async () => {
+      const dsCreateTask = taskHandler.interface.encodeFunctionData(
+        "createTask",
+        [resolver.address, actionData]
+      );
+      const taskId = await furuGelato.getTaskId(
+        dsProxy.address,
+        resolver.address,
+        actionData
+      );
+
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
+      )
+        .to.emit(furuGelato, "TaskCreated")
+        .withArgs(dsProxy.address, taskId, resolver.address, actionData);
+
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
+      ).to.be.revertedWith("Sender already started task");
+    });
   });
 
   describe("cancel task", () => {
@@ -184,7 +221,6 @@ describe("FuruGelato", function () {
         "createTask",
         [resolver.address, actionData]
       );
-
       await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
     });
 
@@ -198,7 +234,66 @@ describe("FuruGelato", function () {
         "cancelTask",
         [resolver.address, actionData]
       );
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
+      )
+        .to.emit(furuGelato, "TaskCancelled")
+        .withArgs(dsProxy.address, taskId, resolver.address, actionData);
+    });
 
+    it("canceling a task not existed", async () => {
+      const taskId = await furuGelato.getTaskId(
+        dsProxy.address,
+        resolver.address,
+        actionData
+      );
+      const dsCancelTask = taskHandler.interface.encodeFunctionData(
+        "cancelTask",
+        [resolver.address, actionData]
+      );
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
+      )
+        .to.emit(furuGelato, "TaskCancelled")
+        .withArgs(dsProxy.address, taskId, resolver.address, actionData);
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
+      ).to.be.revertedWith("Sender did not start task yet");
+    });
+
+    it("canceling an invalidated task", async () => {
+      const taskId = await furuGelato.getTaskId(
+        dsProxy.address,
+        resolver.address,
+        actionData
+      );
+      await expect(furuGelato.connect(owner).banTask(taskId))
+        .to.emit(furuGelato, "TaskBlacklistAdded")
+        .withArgs(taskId);
+      const dsCancelTask = taskHandler.interface.encodeFunctionData(
+        "cancelTask",
+        [resolver.address, actionData]
+      );
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
+      )
+        .to.emit(furuGelato, "TaskCancelled")
+        .withArgs(dsProxy.address, taskId, resolver.address, actionData);
+    });
+
+    it("canceling an task of invalid DSProxy", async () => {
+      const taskId = await furuGelato.getTaskId(
+        dsProxy.address,
+        resolver.address,
+        actionData
+      );
+      await expect(furuGelato.connect(owner).banDSProxy(dsProxy.address))
+        .to.emit(furuGelato, "DSProxyBlacklistAdded")
+        .withArgs(dsProxy.address);
+      const dsCancelTask = taskHandler.interface.encodeFunctionData(
+        "cancelTask",
+        [resolver.address, actionData]
+      );
       await expect(
         dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
       )
@@ -218,9 +313,23 @@ describe("FuruGelato", function () {
     });
 
     it("normal", async () => {
-      await furuGelato
-        .connect(executor)
-        .exec(fee, dsProxy.address, resolver.address, actionData);
+      const taskId = await furuGelato.getTaskId(
+        dsProxy.address,
+        resolver.address,
+        actionData
+      );
+      await expect(
+        furuGelato
+          .connect(executor)
+          .exec(fee, dsProxy.address, resolver.address, actionData)
+      )
+        .to.emit(furuGelato, "ExecSuccess")
+        .withArgs(
+          fee,
+          "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          dsProxy.address,
+          taskId
+        );
     });
 
     it("should revert when resolver unregistered", async () => {
@@ -252,6 +361,34 @@ describe("FuruGelato", function () {
       await furuGelato
         .connect(executor)
         .exec(fee, dsProxy.address, resolver.address, actionData);
+    });
+
+    it("executing an invalid DSProxy's task", async () => {
+      await expect(furuGelato.connect(owner).banDSProxy(dsProxy.address))
+        .to.emit(furuGelato, "DSProxyBlacklistAdded")
+        .withArgs(dsProxy.address);
+
+      await expect(
+        furuGelato
+          .connect(executor)
+          .exec(fee, dsProxy.address, resolver.address, actionData)
+      ).to.revertedWith("Invalid dsProxy");
+    });
+
+    it("executing an invalid task", async () => {
+      const taskId = await furuGelato.getTaskId(
+        dsProxy.address,
+        resolver.address,
+        actionData
+      );
+      await expect(furuGelato.connect(owner).banTask(taskId))
+        .to.emit(furuGelato, "TaskBlacklistAdded")
+        .withArgs(taskId);
+      await expect(
+        furuGelato
+          .connect(executor)
+          .exec(fee, dsProxy.address, resolver.address, actionData)
+      ).to.revertedWith("invalid task");
     });
   });
 });
