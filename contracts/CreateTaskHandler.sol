@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.0;
+pragma solidity ^0.8.0;
 
 import {IFuruGelato} from "./interfaces/IFuruGelato.sol";
 
@@ -10,17 +10,15 @@ contract CreateTaskHandler {
         furuGelato = _furuGelato;
     }
 
-    function createTask(
-        address[] calldata _targets,
-        bytes[] calldata _execDatas
-    ) external {
-        IFuruGelato(furuGelato).createTask(_targets, _execDatas);
+    function createTask(address _resolverAddress, bytes calldata _resolverData)
+        external
+    {
+        IFuruGelato(furuGelato).createTask(_resolverAddress, _resolverData);
     }
 
-    function cancelTask(
-        address[] calldata _targets,
-        bytes[] calldata _execDatas
-    ) external {
-        IFuruGelato(furuGelato).cancelTask(_targets, _execDatas);
+    function cancelTask(address _resolverAddress, bytes calldata _resolverData)
+        external
+    {
+        IFuruGelato(furuGelato).cancelTask(_resolverAddress, _resolverData);
     }
 }

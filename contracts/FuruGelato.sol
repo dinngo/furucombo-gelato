@@ -1,196 +1,178 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.6;
 
-import {Gelatofied} from "./Gelatofied.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {
     EnumerableSet
 } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IDSProxy} from "./interfaces/IDSProxy.sol";
-import {IProxy} from "./interfaces/IProxy.sol";
-import {GelatoBytes} from "./GelatoBytes.sol";
+import {IFuruGelato} from "./interfaces/IFuruGelato.sol";
+import {DSProxyBlacklist} from "./DSProxyBlacklist.sol";
+import {DSProxyTask} from "./DSProxyTask.sol";
+import {Gelatofied} from "./Gelatofied.sol";
+import {Resolver} from "./Resolver.sol";
+import {ResolverWhitelist} from "./ResolverWhitelist.sol";
+import {TaskBlacklist} from "./TaskBlacklist.sol";
 
-contract FuruGelato is Ownable, Gelatofied {
+/// @title The task manager
+contract FuruGelato is
+    IFuruGelato,
+    Ownable,
+    Gelatofied,
+    DSProxyTask,
+    ResolverWhitelist,
+    DSProxyBlacklist,
+    TaskBlacklist
+{
     using EnumerableSet for EnumerableSet.Bytes32Set;
-    using GelatoBytes for bytes;
 
     string public constant VERSION = "0.0.1";
-    address public immutable THIS;
-    mapping(bytes32 => address) public callerOfTask;
-    EnumerableSet.Bytes32Set internal _whitelistedTasks;
+    /// @notice The creator of the task
+    mapping(bytes32 => address) public taskCreator;
+    /// @notice The total task list created by user
+    mapping(address => EnumerableSet.Bytes32Set) internal _createdTasks;
 
-    event TaskCreated(
-        address caller,
-        address[] targets,
-        bytes[] taskDatas,
-        bytes32 _hash
-    );
-    event TaskCancelled(
-        address caller,
-        address[] targets,
-        bytes[] taskDatas,
-        bytes32 _hash
-    );
-
-    event LogFundsDeposited(address indexed sender, uint256 amount);
-    event LogFundsWithdrawn(
-        address indexed sender,
-        uint256 amount,
-        address receiver
-    );
-
-    modifier onlyDelegatecall() {
-        require(
-            THIS != address(this),
-            "FuruGelato: batchExec: Only delegatecall"
-        );
-        _;
-    }
-
-    constructor(address payable _gelato) Gelatofied(_gelato) {
-        THIS = address(this);
-    }
+    constructor(address payable _gelato) Gelatofied(_gelato) {}
 
     receive() external payable {
         emit LogFundsDeposited(msg.sender, msg.value);
     }
 
-    function createTask(
-        address[] calldata _targets,
-        bytes[] calldata _execDatas
-    ) external {
+    // Task related
+    /// @notice Create the task through the given resolver. The resolver should
+    /// be validated through a whitelist.
+    /// @param _resolverAddress The resolver to generate the task execution
+    /// data.
+    /// @param _resolverData The data to be provided to the resolver for data
+    /// generation.
+    function createTask(address _resolverAddress, bytes calldata _resolverData)
+        external
+        override
+        onlyValidResolver(_resolverAddress)
+        onlyValidDSProxy(msg.sender)
+    {
+        // The _resolverData is passed to the resolver to generate the
+        // execution data for the task.
+        (, bytes memory executionData) =
+            Resolver(_resolverAddress).checker(msg.sender, _resolverData);
+        bytes32 taskId = getTaskId(msg.sender, _resolverAddress, executionData);
         require(
-            verifyHash(getHash(_targets, _execDatas)),
-            "FuruGelato: createTask: Task not whitelisted"
-        );
-
-        bytes32 task = keccak256(abi.encode(msg.sender, _targets, _execDatas));
-        require(
-            callerOfTask[task] == address(0),
+            taskCreator[taskId] == address(0),
             "FuruGelato: createTask: Sender already started task"
         );
+        _createdTasks[msg.sender].add(taskId);
+        taskCreator[taskId] = msg.sender;
 
-        callerOfTask[task] = msg.sender;
+        // Call resolver's `onCreateTask()`
+        require(
+            Resolver(_resolverAddress).onCreateTask(msg.sender, executionData),
+            "FuruGelato: createTask: onCreateTask() failed"
+        );
 
-        emit TaskCreated(msg.sender, _targets, _execDatas, task);
+        emit TaskCreated(msg.sender, taskId, _resolverAddress, executionData);
     }
 
-    function cancelTask(
-        address[] calldata _targets,
-        bytes[] calldata _execDatas
-    ) external {
-        bytes32 task = keccak256(abi.encode(msg.sender, _targets, _execDatas));
+    /// @notice Cancel the task that was created through the given resolver.
+    /// @param _resolverAddress The resolver that created the task.
+    /// @param _executionData The task data to be canceled.
+    function cancelTask(address _resolverAddress, bytes calldata _executionData)
+        external
+        override
+    {
+        bytes32 taskId =
+            getTaskId(msg.sender, _resolverAddress, _executionData);
 
         require(
-            callerOfTask[task] != address(0),
+            taskCreator[taskId] == msg.sender,
             "FuruGelato: cancelTask: Sender did not start task yet"
         );
 
-        delete callerOfTask[task];
+        _createdTasks[msg.sender].remove(taskId);
+        delete taskCreator[taskId];
 
-        emit TaskCancelled(msg.sender, _targets, _execDatas, task);
+        require(
+            Resolver(_resolverAddress).onCancelTask(msg.sender, _executionData),
+            "FuruGelato: cancelTask: onCancelTask() failed"
+        );
+
+        emit TaskCancelled(
+            msg.sender,
+            taskId,
+            _resolverAddress,
+            _executionData
+        );
     }
 
+    /// @notice Execute the task created by `_proxy`through the given resolver.
+    /// The resolver should be validated through a whitelist.
+    /// @param _fee The fee to be paid to `gelato`
+    /// @param _resolverAddress The resolver that created the task.
+    /// @param _executionData The execution payload.
     function exec(
         uint256 _fee,
         address _proxy,
-        address[] calldata _targets,
-        bytes[] calldata _execDatas
-    ) external gelatofy(_fee, ETH) {
-        bytes32 task = keccak256(abi.encode(_proxy, _targets, _execDatas));
+        address _resolverAddress,
+        bytes calldata _executionData
+    )
+        external
+        override
+        gelatofy(_fee, ETH)
+        onlyValidResolver(_resolverAddress)
+        onlyValidDSProxy(_proxy)
+    {
+        bytes32 taskId = getTaskId(_proxy, _resolverAddress, _executionData);
+        require(isValidTask(taskId), "FuruGelato: exec: invalid task");
+        // Fetch the action to be used in dsproxy's `execute()`.
+        address action = Resolver(_resolverAddress).action();
 
         require(
-            _proxy == callerOfTask[task],
+            _proxy == taskCreator[taskId],
             "FuruGelato: exec: No task found"
         );
 
-        bytes memory execData =
-            abi.encodeWithSelector(
-                this.batchExec.selector,
-                _targets,
-                _execDatas
-            );
-
-        IDSProxy(_proxy).execute(address(this), execData);
-    }
-
-    /// @notice Delegatecalled by User Proxies
-    function batchExec(address[] memory _targets, bytes[] memory _datas)
-        external
-        onlyDelegatecall
-    {
-        for (uint256 i; i < _targets.length; i++) {
-            (bool success, ) = _targets[i].call(_datas[i]);
-            require(success, "FuruGelato: batchExec: Delegatecall failed");
+        try IDSProxy(_proxy).execute(action, _executionData) {} catch {
+            revert("FuruGelato: exec: execute failed");
         }
-    }
 
-    function whitelistTask(
-        address[] memory _targets,
-        bytes4[] memory _selectors
-    ) external onlyOwner {
-        bytes32 taskHash = keccak256(abi.encode(_targets, _selectors));
-        _whitelistedTasks.add(taskHash);
-    }
-
-    function removeTask(bytes32 _taskHash) external onlyOwner {
         require(
-            _whitelistedTasks.contains(_taskHash),
-            "FuruGelato: whitelistResolver: Task not whitelisted"
+            Resolver(_resolverAddress).onExec(_proxy, _executionData),
+            "FuruGelato: exec: onExec() failed"
         );
 
-        _whitelistedTasks.remove(_taskHash);
+        emit ExecSuccess(_fee, ETH, _proxy, taskId);
     }
 
+    /// @notice Return the tasks created by the user.
+    /// @param _taskCreator The user to be queried.
+    /// @return The task list.
+    function getTaskIdsByUser(address _taskCreator)
+        external
+        view
+        override
+        returns (bytes32[] memory)
+    {
+        uint256 length = _createdTasks[_taskCreator].length();
+        bytes32[] memory taskIds = new bytes32[](length);
+
+        for (uint256 i; i < length; i++) {
+            taskIds[i] = _createdTasks[_taskCreator].at(i);
+        }
+
+        return taskIds;
+    }
+
+    // Funds related
+    /// @notice Withdraw the deposited funds that is used for paying fee.
+    /// @param _amount The amount to be withdrawn.
+    /// @param _receiver The address to be withdrawn to.
     function withdrawFunds(uint256 _amount, address payable _receiver)
         external
+        override
         onlyOwner
     {
         (bool success, ) = _receiver.call{value: _amount}("");
         require(success, "FuruGelato: withdrawFunds: Withdraw funds failed");
 
         emit LogFundsWithdrawn(msg.sender, _amount, _receiver);
-    }
-
-    function getWhitelistedTasks()
-        external
-        view
-        returns (bytes32[] memory _tasks)
-    {
-        uint256 length = _whitelistedTasks.length();
-        _tasks = new bytes32[](length);
-        for (uint256 i = 0; i < length; i++)
-            _tasks[i] = _whitelistedTasks.at(i);
-    }
-
-    function verifyHash(bytes32 _hash) public view returns (bool) {
-        return _whitelistedTasks.contains(_hash);
-    }
-
-    function getHash(address[] calldata _targets, bytes[] calldata _datas)
-        public
-        pure
-        returns (bytes32 _hash)
-    {
-        require(
-            _targets.length == _datas.length,
-            "FuruGelato: verifyHash: Length mismatch"
-        );
-
-        bytes4[] memory selectors = getSelectors(_datas);
-        _hash = keccak256(abi.encode(_targets, selectors));
-    }
-
-    function getSelectors(bytes[] calldata _datas)
-        public
-        pure
-        returns (bytes4[] memory)
-    {
-        bytes4[] memory _selectors = new bytes4[](_datas.length);
-
-        for (uint256 i = 0; i < _datas.length; i++) {
-            _selectors[i] = _datas[i].calldataSliceSelector();
-        }
-        return _selectors;
     }
 }
