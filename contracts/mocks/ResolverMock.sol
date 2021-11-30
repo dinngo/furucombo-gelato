@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {Resolver} from "../Resolver.sol";
+import {Resolver} from "../resolver/Resolver.sol";
 
 contract ResolverMock is Resolver {
     constructor(address _action, address _furuGelato)

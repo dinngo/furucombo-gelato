@@ -3,8 +3,8 @@
 pragma solidity 0.8.6;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ITaskBlacklist, IDSProxyBlacklist} from "./interfaces/IFuruGelato.sol";
-import {DSProxyTask} from "./DSProxyTask.sol";
+import {ITaskBlacklist, IDSProxyBlacklist} from "../interfaces/IFuruGelato.sol";
+import {DSProxyTask} from "../DSProxyTask.sol";
 import {Resolver} from "./Resolver.sol";
 
 /// @title Task timer is a implementation of resolver for generating tasks

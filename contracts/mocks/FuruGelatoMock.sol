@@ -8,7 +8,7 @@ import {
     IDSProxyBlacklist
 } from "../interfaces/IFuruGelato.sol";
 import {DSProxyTask} from "../DSProxyTask.sol";
-import {Resolver} from "../Resolver.sol";
+import {Resolver} from "../resolver/Resolver.sol";
 import {Gelatofied} from "../Gelatofied.sol";
 
 contract FuruGelatoMock is
