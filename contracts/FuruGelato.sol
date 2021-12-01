@@ -10,7 +10,7 @@ import {IFuruGelato} from "./interfaces/IFuruGelato.sol";
 import {DSProxyBlacklist} from "./DSProxyBlacklist.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 import {Gelatofied} from "./Gelatofied.sol";
-import {Resolver} from "./resolver/Resolver.sol";
+import {Resolver} from "./resolvers/Resolver.sol";
 import {ResolverWhitelist} from "./ResolverWhitelist.sol";
 import {TaskBlacklist} from "./TaskBlacklist.sol";
 
