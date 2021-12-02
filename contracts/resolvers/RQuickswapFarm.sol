@@ -2,9 +2,6 @@
 
 pragma solidity 0.8.6;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ITaskBlacklist, IDSProxyBlacklist} from "../interfaces/IFuruGelato.sol";
-import {DSProxyTask} from "../DSProxyTask.sol";
 import {StandardResolver} from "./StandardResolver.sol";
 
 /// @title RQuickswap is a implementation of resolver for generating tasks
