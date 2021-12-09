@@ -7,7 +7,7 @@ import {ITaskBlacklist, IDSProxyBlacklist} from "../interfaces/IFuruGelato.sol";
 import {DSProxyTask} from "../DSProxyTask.sol";
 import {Resolver} from "./Resolver.sol";
 
-/// @title Task timer is a implementation of resolver for generating tasks
+/// @title StandardResolver is a implementation of resolver for generating tasks
 /// that can be executed repeatedly after a specific time period.
 abstract contract StandardResolver is Resolver, DSProxyTask, Ownable {
     /// @notice The last execution time of the task.

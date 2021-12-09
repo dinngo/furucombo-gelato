@@ -4,9 +4,8 @@ pragma solidity 0.8.6;
 
 import {StandardResolver} from "./StandardResolver.sol";
 
-/// @title RQuickswap is a implementation of resolver for generating tasks
-/// that can be executed repeatedly after a specific time period.
-contract RQuickswap is StandardResolver {
+/// @title RQuickswapFarm is a implementation of StandardResolver.
+contract RQuickswapFarm is StandardResolver {
     address public immutable aQuickswapFarm;
     address public immutable aFurucombo;
 
@@ -18,6 +17,9 @@ contract RQuickswap is StandardResolver {
 
     bytes4 private constant _DQUICK_LEAVE_SIG =
         bytes4(keccak256(bytes("dQuickLeave()")));
+
+    bytes4 private constant _STAKE_SIG =
+        bytes4(keccak256(bytes("stake(address,uint256)")));
 
     bytes4 private constant _EXEC_SIG =
         bytes4(
@@ -47,11 +49,12 @@ contract RQuickswap is StandardResolver {
     {
         (address[] memory tos, , bytes[] memory datas) =
             abi.decode(data, (address[], bytes32[], bytes[]));
-        require(tos.length == 3, "Invalid tos length");
+        require(tos.length == 4, "Invalid tos length");
 
         require(tos[0] == aQuickswapFarm, "Invalid tos[0]");
         require(tos[1] == aQuickswapFarm, "Invalid tos[1]");
         require(tos[2] == aFurucombo, "Invalid tos[2]");
+        require(tos[3] == aQuickswapFarm, "Invalid tos[3]");
 
         require(
             bytes4(datas[0]) == _GET_REWARD_AND_CHARGE_SIG,
@@ -59,6 +62,7 @@ contract RQuickswap is StandardResolver {
         );
         require(bytes4(datas[1]) == _DQUICK_LEAVE_SIG, "Invalid datas[1]");
         require(bytes4(datas[2]) == _EXEC_SIG, "Invalid datas[2]");
+        require(bytes4(datas[3]) == _STAKE_SIG, "Invalid datas[3]");
 
         return true;
     }
