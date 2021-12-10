@@ -1,5 +1,6 @@
 // PLUGINS
 import "@nomiclabs/hardhat-waffle";
+import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
 // Process Env Variables
 import * as dotenv from "dotenv";
@@ -7,6 +8,7 @@ import { utils } from "ethers";
 import "hardhat-deploy";
 // Config
 import { HardhatUserConfig } from "hardhat/config";
+
 const fs = require("fs");
 
 dotenv.config({ path: __dirname + "/.env" });
