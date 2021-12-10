@@ -1,19 +1,8 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { constants, utils } from "ethers";
+import { constants, utils, Bytes } from "ethers";
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
-import {
-  FuruGelatoMock,
-  ActionMock,
-  AFurucomboMock,
-  AQuickswapFarmMock,
-  CreateTaskHandler,
-  IDSProxy,
-  DSProxyFactory,
-  DSGuard,
-  Foo,
-  RQuickswapFarm,
-} from "../typechain";
+import { IDSProxy, Foo } from "../typechain";
 
 const gelatoAddress = "0x3CACa7b48D0573D793d3b0279b5F0029180E83b6";
 
@@ -21,27 +10,26 @@ describe("TaskTimer", function () {
   this.timeout(0);
   let user0: SignerWithAddress;
   let owner: SignerWithAddress;
-  let executor: any;
-
   let dsProxy: IDSProxy;
-
-  let dsGuard: DSGuard;
-  let dsProxyFactory: DSProxyFactory;
-  let furuGelato: FuruGelatoMock;
-  let action: ActionMock;
-  let aFurucombo: AFurucomboMock;
-  let aQuickswapFarm: AQuickswapFarmMock;
-
-  let taskHandler: CreateTaskHandler;
-  let rQuickswapFarm: RQuickswapFarm;
-  let foo: Foo;
+  let executor: any;
+  let dsGuard: any;
+  let dsProxyFactory: any;
+  let furuGelato: any;
+  let action: any;
+  let aFurucombo: any;
+  let aQuickswapFarm: any;
+  let taskHandler: any;
+  let rQuickswapFarm: any;
+  let foo: any;
   let actionData: any;
   let data0: any;
   let data1: any;
   let data2: any;
   let data3: any;
   let config: any;
+  let taskId: Bytes;
 
+  const fee = ethers.utils.parseEther("0");
   beforeEach(async function () {
     [user0, owner] = await ethers.getSigners();
     executor = await ethers.provider.getSigner(gelatoAddress);
@@ -65,69 +53,25 @@ describe("TaskTimer", function () {
       params: [gelatoAddress],
     });
 
-    const furuGelatoD = await furuGelatoF.connect(owner).deploy(gelatoAddress);
-    const actionD = await actionF.deploy();
-    const aFurucomboD = await aFurucomboF.deploy();
-    const aQuickswapFarmD = await aQuickswapFarmF.deploy();
-    const dsProxyFactoryD = await dsProxyFactoryF.deploy();
-    const dsGuardD = await dsGuardF.deploy();
-    const rQuickswapFarmD = await rQuickswapFarmF
+    furuGelato = await furuGelatoF.connect(owner).deploy(gelatoAddress);
+    action = await actionF.deploy();
+    aFurucombo = await aFurucomboF.deploy();
+    aQuickswapFarm = await aQuickswapFarmF.deploy();
+    dsProxyFactory = await dsProxyFactoryF.deploy();
+    dsGuard = await dsGuardF.deploy();
+    foo = await fooF.deploy();
+    taskHandler = await taskHandlerF.deploy(furuGelato.address);
+    rQuickswapFarm = await rQuickswapFarmF
       .connect(owner)
       .deploy(
-        actionD.address,
-        furuGelatoD.address,
-        aQuickswapFarmD.address,
-        aFurucomboD.address,
+        action.address,
+        furuGelato.address,
+        aQuickswapFarm.address,
+        aFurucombo.address,
         180
       );
-    const fooD = await fooF.deploy();
-
-    const taskHandlerD = await taskHandlerF.deploy(furuGelatoD.address);
-
-    dsProxyFactory = (await ethers.getContractAt(
-      "DSProxyFactory",
-      dsProxyFactoryD.address
-    )) as DSProxyFactory;
-
-    dsGuard = (await ethers.getContractAt(
-      "DSGuard",
-      dsGuardD.address
-    )) as DSGuard;
-
-    furuGelato = (await ethers.getContractAt(
-      "FuruGelatoMock",
-      furuGelatoD.address
-    )) as FuruGelatoMock;
-
-    action = (await ethers.getContractAt(
-      "ActionMock",
-      actionD.address
-    )) as ActionMock;
-
-    aFurucombo = (await ethers.getContractAt(
-      "AFurucomboMock",
-      aFurucomboD.address
-    )) as AFurucomboMock;
-
-    aQuickswapFarm = (await ethers.getContractAt(
-      "AQuickswapFarmMock",
-      aQuickswapFarmD.address
-    )) as AQuickswapFarmMock;
-
-    rQuickswapFarm = (await ethers.getContractAt(
-      "RQuickswapFarm",
-      rQuickswapFarmD.address
-    )) as RQuickswapFarm;
-
-    foo = (await ethers.getContractAt("Foo", fooD.address)) as Foo;
-
-    taskHandler = (await ethers.getContractAt(
-      "CreateTaskHandler",
-      taskHandlerD.address
-    )) as CreateTaskHandler;
 
     const cache = await dsProxyFactory.cache();
-
     const dsProxyD = await dsProxyF.deploy(cache);
     dsProxy = (await ethers.getContractAt(
       "IDSProxy",
@@ -148,8 +92,8 @@ describe("TaskTimer", function () {
       .to.emit(dsProxy, "LogSetAuthority")
       .withArgs(dsGuard.address);
 
+    // prepare correct action data.
     config = utils.hexlify(constants.MaxUint256);
-
     data0 = aQuickswapFarm.interface.encodeFunctionData("getRewardAndCharge", [
       aQuickswapFarm.address,
     ]);
@@ -177,6 +121,11 @@ describe("TaskTimer", function () {
       [config, config, config, config],
       [data0, data1, data2, data3],
     ]);
+    taskId = await rQuickswapFarm.getTaskId(
+      dsProxy.address,
+      rQuickswapFarm.address,
+      actionData
+    );
   });
 
   describe("checker", () => {
@@ -189,6 +138,7 @@ describe("TaskTimer", function () {
         [fooConfig],
         [fooData],
       ]);
+
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
         [rQuickswapFarm.address, fooActionData]
@@ -218,6 +168,27 @@ describe("TaskTimer", function () {
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
       ).to.be.revertedWith("Invalid datas");
     });
+
+    it("create task with wrong tos should fail", async () => {
+      const actionDataWrong = action.interface.encodeFunctionData("multiCall", [
+        [
+          aQuickswapFarm.address,
+          aFurucombo.address,
+          aFurucombo.address,
+          aQuickswapFarm.address,
+        ],
+        [config, config, config, config],
+        [data0, data1, data2, data2],
+      ]);
+      const dsCreateTask = taskHandler.interface.encodeFunctionData(
+        "createTask",
+        [rQuickswapFarm.address, actionDataWrong]
+      );
+
+      await expect(
+        dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
+      ).to.be.revertedWith("Invalid tos[1]");
+    });
   });
 
   describe("onCreateTask", () => {
@@ -225,11 +196,6 @@ describe("TaskTimer", function () {
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
         [rQuickswapFarm.address, actionData]
-      );
-      const taskId = await rQuickswapFarm.getTaskId(
-        dsProxy.address,
-        rQuickswapFarm.address,
-        actionData
       );
       await expect(
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
@@ -239,6 +205,47 @@ describe("TaskTimer", function () {
 
       expect(await rQuickswapFarm.lastExecTimes(taskId)).to.be.gt(
         ethers.BigNumber.from("0")
+      );
+    });
+  });
+
+  describe("onExec", () => {
+    beforeEach(async () => {
+      const dsCreateTask = taskHandler.interface.encodeFunctionData(
+        "createTask",
+        [rQuickswapFarm.address, actionData]
+      );
+
+      await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
+    });
+
+    it("should execute and set timer when condition passes", async () => {
+      expect(await aQuickswapFarm.count()).to.be.eql(
+        ethers.BigNumber.from("0")
+      );
+      expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("0"));
+
+      await expect(
+        furuGelato
+          .connect(executor)
+          .exec(fee, dsProxy.address, rQuickswapFarm.address, actionData)
+      ).to.be.revertedWith("Not yet");
+
+      let lastExecTime = await rQuickswapFarm.lastExecTimes(taskId);
+      const THREE_MIN = 3 * 60;
+
+      await network.provider.send("evm_increaseTime", [THREE_MIN]);
+      await network.provider.send("evm_mine", []);
+
+      await furuGelato
+        .connect(executor)
+        .exec(fee, dsProxy.address, rQuickswapFarm.address, actionData);
+      expect(await aQuickswapFarm.count()).to.be.eql(
+        ethers.BigNumber.from("3")
+      );
+      expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("1"));
+      expect(await rQuickswapFarm.lastExecTimes(taskId)).to.be.gt(
+        lastExecTime.add(ethers.BigNumber.from(THREE_MIN))
       );
     });
   });
