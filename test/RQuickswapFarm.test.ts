@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { constants, utils, Bytes } from "ethers";
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
-import { IDSProxy, Foo } from "../typechain";
+import { IDSProxy } from "../typechain";
 
 const gelatoAddress = "0x3CACa7b48D0573D793d3b0279b5F0029180E83b6";
 
@@ -121,6 +121,7 @@ describe("TaskTimer", function () {
       [config, config, config, config],
       [data0, data1, data2, data3],
     ]);
+
     taskId = await rQuickswapFarm.getTaskId(
       dsProxy.address,
       rQuickswapFarm.address,
@@ -188,24 +189,6 @@ describe("TaskTimer", function () {
       await expect(
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
       ).to.be.revertedWith("Invalid tos[1]");
-    });
-  });
-
-  describe("onCreateTask", () => {
-    it("should update the time when task created", async () => {
-      const dsCreateTask = taskHandler.interface.encodeFunctionData(
-        "createTask",
-        [rQuickswapFarm.address, actionData]
-      );
-      await expect(
-        dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
-      )
-        .to.emit(furuGelato, "TaskCreated")
-        .withArgs(dsProxy.address, taskId, rQuickswapFarm.address, actionData);
-
-      expect(await rQuickswapFarm.lastExecTimes(taskId)).to.be.gt(
-        ethers.BigNumber.from("0")
-      );
     });
   });
 
