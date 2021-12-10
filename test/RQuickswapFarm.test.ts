@@ -6,10 +6,8 @@ import {
   FuruGelatoMock,
   ActionMock,
   AFurucomboMock,
-  ATreviMock,
   AQuickswapFarmMock,
   CreateTaskHandler,
-  TaskTimer,
   IDSProxy,
   DSProxyFactory,
   DSGuard,
@@ -37,6 +35,12 @@ describe("TaskTimer", function () {
   let taskHandler: CreateTaskHandler;
   let rQuickswapFarm: RQuickswapFarm;
   let foo: Foo;
+  let actionData: any;
+  let data0: any;
+  let data1: any;
+  let data2: any;
+  let data3: any;
+  let config: any;
 
   beforeEach(async function () {
     [user0, owner] = await ethers.getSigners();
@@ -144,25 +148,35 @@ describe("TaskTimer", function () {
       .to.emit(dsProxy, "LogSetAuthority")
       .withArgs(dsGuard.address);
 
-    const config = utils.hexlify(constants.MaxUint256);
-    // const data0 = aTrevi.interface.encodeFunctionData(
-    //   "harvestAngelsAndCharge",
-    //   [aTrevi.address, [], []]
-    // );
-    // const data1 = aFurucombo.interface.encodeFunctionData(
-    //   "injectAndBatchExec",
-    //   [[], [], [], [], [], []]
-    // );
-    // const data2 = aTrevi.interface.encodeFunctionData("deposit", [
-    //   aTrevi.address,
-    //   0,
-    // ]);
+    config = utils.hexlify(constants.MaxUint256);
 
-    // actionData = action.interface.encodeFunctionData("multiCall", [
-    //   [aTrevi.address, aFurucombo.address, aTrevi.address],
-    //   [config, config, config],
-    //   [data0, data1, data2],
-    // ]);
+    data0 = aQuickswapFarm.interface.encodeFunctionData("getRewardAndCharge", [
+      aQuickswapFarm.address,
+    ]);
+    data1 = aQuickswapFarm.interface.encodeFunctionData("dQuickLeave");
+    data2 = aFurucombo.interface.encodeFunctionData("injectAndBatchExec", [
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
+    data3 = aQuickswapFarm.interface.encodeFunctionData("stake", [
+      aQuickswapFarm.address,
+      1,
+    ]);
+
+    actionData = action.interface.encodeFunctionData("multiCall", [
+      [
+        aQuickswapFarm.address,
+        aQuickswapFarm.address,
+        aFurucombo.address,
+        aQuickswapFarm.address,
+      ],
+      [config, config, config, config],
+      [data0, data1, data2, data3],
+    ]);
   });
 
   describe("checker", () => {
@@ -185,16 +199,6 @@ describe("TaskTimer", function () {
     });
 
     it("create task with wrong function selector should fail", async () => {
-      const config = utils.hexlify(constants.MaxUint256);
-      const data0 = aQuickswapFarm.interface.encodeFunctionData(
-        "getRewardAndCharge",
-        [aQuickswapFarm.address]
-      );
-      const data1 = aQuickswapFarm.interface.encodeFunctionData("dQuickLeave");
-      const data2 = aFurucombo.interface.encodeFunctionData(
-        "injectAndBatchExec",
-        [[], [], [], [], [], []]
-      );
       const actionDataWrong = action.interface.encodeFunctionData("multiCall", [
         [
           aQuickswapFarm.address,
@@ -233,7 +237,7 @@ describe("TaskTimer", function () {
         .to.emit(furuGelato, "TaskCreated")
         .withArgs(dsProxy.address, taskId, rQuickswapFarm.address, actionData);
 
-      expect(await taskTimer.lastExecTimes(taskId)).to.be.gt(
+      expect(await rQuickswapFarm.lastExecTimes(taskId)).to.be.gt(
         ethers.BigNumber.from("0")
       );
     });
