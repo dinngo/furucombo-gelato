@@ -97,7 +97,7 @@ describe("RQuickswapFarm", function () {
     data0 = aQuickswapFarm.interface.encodeFunctionData("getRewardAndCharge", [
       aQuickswapFarm.address,
     ]);
-    data1 = aQuickswapFarm.interface.encodeFunctionData("dQuickLeave");
+    data1 = aQuickswapFarm.interface.encodeFunctionData("dQuickLeave", [1]);
     data2 = aFurucombo.interface.encodeFunctionData("injectAndBatchExec", [
       [],
       [],

@@ -16,7 +16,7 @@ contract RQuickswapFarm is StandardResolver {
         bytes4(keccak256(bytes("getReward(address)")));
 
     bytes4 private constant _DQUICK_LEAVE_SIG =
-        bytes4(keccak256(bytes("dQuickLeave()")));
+        bytes4(keccak256(bytes("dQuickLeave(uint256)")));
 
     bytes4 private constant _STAKE_SIG =
         bytes4(keccak256(bytes("stake(address,uint256)")));

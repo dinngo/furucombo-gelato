@@ -23,7 +23,7 @@ contract AQuickswapFarmMock {
         return count;
     }
 
-    function dQuickLeave() external returns (uint256) {
+    function dQuickLeave(uint256) external returns (uint256) {
         count++;
         return count;
     }
