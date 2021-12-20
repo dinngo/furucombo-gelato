@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.6;
 
-import {StandardResolver} from "./StandardResolver.sol";
+import {TaskTimer} from "./TaskTimer.sol";
 
 /// @title RQuickswapFarm is a implementation of StandardResolver.
-contract RQuickswapFarm is StandardResolver {
+contract QuickswapFarmTaskTimer is TaskTimer {
     address public immutable aQuickswapFarm;
     address public immutable aFurucombo;
 
@@ -36,7 +36,7 @@ contract RQuickswapFarm is StandardResolver {
         address _aQuickswapFarm,
         address _aFurucombo,
         uint256 _period
-    ) StandardResolver(_action, _furuGelato, _period) {
+    ) TaskTimer(_action, _furuGelato, _period) {
         aQuickswapFarm = _aQuickswapFarm;
         aFurucombo = _aFurucombo;
     }

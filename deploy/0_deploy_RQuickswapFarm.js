@@ -11,6 +11,11 @@ const fakeKey =
   "d74d952106fcdc7fe598eea01a3e9f5a081d928cea7869e9921e69abc5a7dd44";
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
+  if (network.name != "beta") {
+    console.log("RQuickswapFarm deployment script only used for beta network.");
+    return;
+  }
+
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
   const provider = ethers.provider;

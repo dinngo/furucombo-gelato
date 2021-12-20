@@ -10,7 +10,7 @@ import {IFuruGelato} from "./interfaces/IFuruGelato.sol";
 import {DSProxyBlacklist} from "./DSProxyBlacklist.sol";
 import {DSProxyTask} from "./DSProxyTask.sol";
 import {Gelatofied} from "./Gelatofied.sol";
-import {Resolver} from "./resolvers/Resolver.sol";
+import {ResolverBase} from "./resolvers/ResolverBase.sol";
 import {ResolverWhitelist} from "./ResolverWhitelist.sol";
 import {TaskBlacklist} from "./TaskBlacklist.sol";
 
@@ -54,7 +54,7 @@ contract FuruGelato is
         // The _resolverData is passed to the resolver to generate the
         // execution data for the task.
         (, bytes memory executionData) =
-            Resolver(_resolverAddress).checker(msg.sender, _resolverData);
+            ResolverBase(_resolverAddress).checker(msg.sender, _resolverData);
         bytes32 taskId = getTaskId(msg.sender, _resolverAddress, executionData);
         require(
             taskCreator[taskId] == address(0),
@@ -65,7 +65,10 @@ contract FuruGelato is
 
         // Call resolver's `onCreateTask()`
         require(
-            Resolver(_resolverAddress).onCreateTask(msg.sender, executionData),
+            ResolverBase(_resolverAddress).onCreateTask(
+                msg.sender,
+                executionData
+            ),
             "FuruGelato: createTask: onCreateTask() failed"
         );
 
@@ -91,7 +94,10 @@ contract FuruGelato is
         delete taskCreator[taskId];
 
         require(
-            Resolver(_resolverAddress).onCancelTask(msg.sender, _executionData),
+            ResolverBase(_resolverAddress).onCancelTask(
+                msg.sender,
+                _executionData
+            ),
             "FuruGelato: cancelTask: onCancelTask() failed"
         );
 
@@ -123,7 +129,7 @@ contract FuruGelato is
         bytes32 taskId = getTaskId(_proxy, _resolverAddress, _executionData);
         require(isValidTask(taskId), "FuruGelato: exec: invalid task");
         // Fetch the action to be used in dsproxy's `execute()`.
-        address action = Resolver(_resolverAddress).action();
+        address action = ResolverBase(_resolverAddress).action();
 
         require(
             _proxy == taskCreator[taskId],
@@ -135,7 +141,7 @@ contract FuruGelato is
         }
 
         require(
-            Resolver(_resolverAddress).onExec(_proxy, _executionData),
+            ResolverBase(_resolverAddress).onExec(_proxy, _executionData),
             "FuruGelato: exec: onExec() failed"
         );
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-abstract contract Resolver {
+abstract contract ResolverBase {
     address public immutable action;
     address public immutable furuGelato;
 

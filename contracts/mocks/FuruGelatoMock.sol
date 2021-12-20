@@ -8,7 +8,7 @@ import {
     IDSProxyBlacklist
 } from "../interfaces/IFuruGelato.sol";
 import {DSProxyTask} from "../DSProxyTask.sol";
-import {Resolver} from "../resolvers/Resolver.sol";
+import {ResolverBase} from "../resolvers/ResolverBase.sol";
 import {Gelatofied} from "../Gelatofied.sol";
 
 contract FuruGelatoMock is
@@ -31,12 +31,15 @@ contract FuruGelatoMock is
         override
     {
         (, bytes memory executionData) =
-            Resolver(_resolverAddress).checker(msg.sender, _resolverData);
+            ResolverBase(_resolverAddress).checker(msg.sender, _resolverData);
         bytes32 taskId = getTaskId(msg.sender, _resolverAddress, executionData);
 
         // Call resolver's `onCreateTask()`
         require(
-            Resolver(_resolverAddress).onCreateTask(msg.sender, executionData),
+            ResolverBase(_resolverAddress).onCreateTask(
+                msg.sender,
+                executionData
+            ),
             "FuruGelato: createTask: onCreateTask() failed"
         );
 
@@ -51,7 +54,10 @@ contract FuruGelatoMock is
             getTaskId(msg.sender, _resolverAddress, _executionData);
 
         require(
-            Resolver(_resolverAddress).onCancelTask(msg.sender, _executionData),
+            ResolverBase(_resolverAddress).onCancelTask(
+                msg.sender,
+                _executionData
+            ),
             "FuruGelato: cancelTask: onCancelTask() failed"
         );
 
@@ -71,14 +77,14 @@ contract FuruGelatoMock is
     ) external override gelatofy(_fee, ETH) {
         bytes32 taskId = getTaskId(_proxy, _resolverAddress, _executionData);
         // Fetch the action to be used in dsproxy's `execute()`.
-        address action = Resolver(_resolverAddress).action();
+        address action = ResolverBase(_resolverAddress).action();
 
         try IDSProxy(_proxy).execute(action, _executionData) {} catch {
             revert("FuruGelato: exec: execute failed");
         }
 
         require(
-            Resolver(_resolverAddress).onExec(_proxy, _executionData),
+            ResolverBase(_resolverAddress).onExec(_proxy, _executionData),
             "FuruGelato: exec: onExec() failed"
         );
 

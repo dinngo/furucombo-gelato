@@ -6,7 +6,7 @@ import { IDSProxy } from "../typechain";
 
 const gelatoAddress = "0x3CACa7b48D0573D793d3b0279b5F0029180E83b6";
 
-describe("RQuickswapFarm", function () {
+describe("QuickswapFarmTaskTimer", function () {
   this.timeout(0);
   let user0: SignerWithAddress;
   let owner: SignerWithAddress;
@@ -19,7 +19,7 @@ describe("RQuickswapFarm", function () {
   let aFurucombo: any;
   let aQuickswapFarm: any;
   let taskHandler: any;
-  let rQuickswapFarm: any;
+  let quickswapFarmTaskTimer: any;
   let foo: any;
   let actionData: any;
   let data0: any;
@@ -43,7 +43,9 @@ describe("RQuickswapFarm", function () {
     const dsProxyFactoryF = await ethers.getContractFactory("DSProxyFactory");
     const dsGuardF = await ethers.getContractFactory("DSGuard");
     const dsProxyF = await ethers.getContractFactory("DSProxy");
-    const rQuickswapFarmF = await ethers.getContractFactory("RQuickswapFarm");
+    const quickswapFarmTaskTimerF = await ethers.getContractFactory(
+      "QuickswapFarmTaskTimer"
+    );
     const fooF = await ethers.getContractFactory("Foo");
 
     const taskHandlerF = await ethers.getContractFactory("CreateTaskHandler");
@@ -61,7 +63,7 @@ describe("RQuickswapFarm", function () {
     dsGuard = await dsGuardF.deploy();
     foo = await fooF.deploy();
     taskHandler = await taskHandlerF.deploy(furuGelato.address);
-    rQuickswapFarm = await rQuickswapFarmF
+    quickswapFarmTaskTimer = await quickswapFarmTaskTimerF
       .connect(owner)
       .deploy(
         action.address,
@@ -122,9 +124,9 @@ describe("RQuickswapFarm", function () {
       [data0, data1, data2, data3],
     ]);
 
-    taskId = await rQuickswapFarm.getTaskId(
+    taskId = await quickswapFarmTaskTimer.getTaskId(
       dsProxy.address,
-      rQuickswapFarm.address,
+      quickswapFarmTaskTimer.address,
       actionData
     );
   });
@@ -142,7 +144,7 @@ describe("RQuickswapFarm", function () {
 
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [rQuickswapFarm.address, fooActionData]
+        [quickswapFarmTaskTimer.address, fooActionData]
       );
       await expect(
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
@@ -162,7 +164,7 @@ describe("RQuickswapFarm", function () {
       ]);
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [rQuickswapFarm.address, actionDataWrong]
+        [quickswapFarmTaskTimer.address, actionDataWrong]
       );
 
       await expect(
@@ -183,7 +185,7 @@ describe("RQuickswapFarm", function () {
       ]);
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [rQuickswapFarm.address, actionDataWrong]
+        [quickswapFarmTaskTimer.address, actionDataWrong]
       );
 
       await expect(
@@ -196,7 +198,7 @@ describe("RQuickswapFarm", function () {
     beforeEach(async () => {
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [rQuickswapFarm.address, actionData]
+        [quickswapFarmTaskTimer.address, actionData]
       );
 
       await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
@@ -211,10 +213,15 @@ describe("RQuickswapFarm", function () {
       await expect(
         furuGelato
           .connect(executor)
-          .exec(fee, dsProxy.address, rQuickswapFarm.address, actionData)
+          .exec(
+            fee,
+            dsProxy.address,
+            quickswapFarmTaskTimer.address,
+            actionData
+          )
       ).to.be.revertedWith("Not yet");
 
-      let lastExecTime = await rQuickswapFarm.lastExecTimes(taskId);
+      let lastExecTime = await quickswapFarmTaskTimer.lastExecTimes(taskId);
       const THREE_MIN = 3 * 60;
 
       await network.provider.send("evm_increaseTime", [THREE_MIN]);
@@ -222,12 +229,12 @@ describe("RQuickswapFarm", function () {
 
       await furuGelato
         .connect(executor)
-        .exec(fee, dsProxy.address, rQuickswapFarm.address, actionData);
+        .exec(fee, dsProxy.address, quickswapFarmTaskTimer.address, actionData);
       expect(await aQuickswapFarm.count()).to.be.eql(
         ethers.BigNumber.from("3")
       );
       expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("1"));
-      expect(await rQuickswapFarm.lastExecTimes(taskId)).to.be.gt(
+      expect(await quickswapFarmTaskTimer.lastExecTimes(taskId)).to.be.gt(
         lastExecTime.add(ethers.BigNumber.from(THREE_MIN))
       );
     });
