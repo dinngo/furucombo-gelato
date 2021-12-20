@@ -12,7 +12,9 @@ const fakeKey =
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
   if (network.name != "beta") {
-    console.log("RQuickswapFarm deployment script only used for beta network.");
+    console.log(
+      "QuickswapFarmTaskTimer deployment script only used for beta network."
+    );
     return;
   }
 
@@ -22,12 +24,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const signer = new ethers.Wallet(fakeKey, provider);
 
   // deploy resolver
-  await deploy("RQuickswapFarm", {
+  await deploy("QuickswapFarmTaskTimer", {
     from: deployer,
     args: [taskExecutor, gelatoAddress, aQuickswapFarm, aFurucombo, period],
     log: true,
   });
-  const rQuickswapFarm = await ethers.getContract("RQuickswapFarm", deployer);
+  const quickswapFarmTaskTimer = await ethers.getContract(
+    "QuickswapFarmTaskTimer",
+    deployer
+  );
 
   // register to FuruGelato
   const iface = new utils.Interface([
@@ -35,7 +40,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   ]);
 
   const registerData = iface.encodeFunctionData("registerResolver", [
-    rQuickswapFarm.address,
+    quickswapFarmTaskTimer.address,
   ]);
 
   const customData = registerData + "ff00ff" + gnosisAddress.replace("0x", "");
@@ -50,4 +55,4 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
 };
 
-module.exports.tags = ["RQuickswapFarm"];
+module.exports.tags = ["QuickswapFarmTaskTimer"];
