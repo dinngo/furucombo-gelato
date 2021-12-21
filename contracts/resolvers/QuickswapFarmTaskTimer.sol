@@ -9,26 +9,22 @@ contract QuickswapFarmTaskTimer is TaskTimer {
     address public immutable aQuickswapFarm;
     address public immutable aFurucombo;
 
+    // solhint-disable
+    // prettier-ignore
     bytes4 private constant _GET_REWARD_AND_CHARGE_SIG =
         bytes4(keccak256(bytes("getRewardAndCharge(address)")));
-
+    // prettier-ignore
     bytes4 private constant _GET_REWARD_SIG =
         bytes4(keccak256(bytes("getReward(address)")));
-
+    // prettier-ignore
     bytes4 private constant _DQUICK_LEAVE_SIG =
         bytes4(keccak256(bytes("dQuickLeave(uint256)")));
-
+    // prettier-ignore
     bytes4 private constant _STAKE_SIG =
         bytes4(keccak256(bytes("stake(address,uint256)")));
-
+    // prettier-ignore
     bytes4 private constant _EXEC_SIG =
-        bytes4(
-            keccak256(
-                bytes(
-                    "injectAndBatchExec(address[],uint256[],address[],address[],bytes32[],bytes[])"
-                )
-            )
-        );
+        bytes4(keccak256(bytes("injectAndBatchExec(address[],uint256[],address[],address[],bytes32[],bytes[])")));
 
     constructor(
         address _action,
