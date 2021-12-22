@@ -33,7 +33,7 @@ describe("FuruGelato", function () {
   let aTrevi: ATreviMock;
 
   let taskHandler: CreateTaskHandler;
-  let taskTimer: TaskTimer;
+  let treviTaskTimer: TaskTimer;
   let foo: Foo;
 
   before(async function () {
@@ -47,7 +47,7 @@ describe("FuruGelato", function () {
     const dsProxyFactoryF = await ethers.getContractFactory("DSProxyFactory");
     const dsGuardF = await ethers.getContractFactory("DSGuard");
     const dsProxyF = await ethers.getContractFactory("DSProxy");
-    const taskTimerF = await ethers.getContractFactory("TaskTimer");
+    const treviTaskTimerF = await ethers.getContractFactory("TreviTaskTimer");
     const fooF = await ethers.getContractFactory("Foo");
 
     const taskHandlerF = await ethers.getContractFactory("CreateTaskHandler");
@@ -63,7 +63,7 @@ describe("FuruGelato", function () {
     const aTreviD = await aTreviF.deploy();
     const dsProxyFactoryD = await dsProxyFactoryF.deploy();
     const dsGuardD = await dsGuardF.deploy();
-    const taskTimerD = await taskTimerF
+    const treviTaskTimerD = await treviTaskTimerF
       .connect(owner)
       .deploy(
         actionD.address,
@@ -106,14 +106,16 @@ describe("FuruGelato", function () {
       aTreviD.address
     )) as ATreviMock;
 
-    taskTimer = (await ethers.getContractAt(
+    treviTaskTimer = (await ethers.getContractAt(
       "TaskTimer",
-      taskTimerD.address
+      treviTaskTimerD.address
     )) as TaskTimer;
 
-    await expect(furuGelato.connect(owner).registerResolver(taskTimer.address))
+    await expect(
+      furuGelato.connect(owner).registerResolver(treviTaskTimer.address)
+    )
       .to.emit(furuGelato, "ResolverWhitelistAdded")
-      .withArgs(taskTimer.address);
+      .withArgs(treviTaskTimer.address);
 
     foo = (await ethers.getContractAt("Foo", fooD.address)) as Foo;
 
@@ -161,7 +163,7 @@ describe("FuruGelato", function () {
     ]);
     const dsCreateTask = taskHandler.interface.encodeFunctionData(
       "createTask",
-      [taskTimer.address, actionData]
+      [treviTaskTimer.address, actionData]
     );
     await expect(
       dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
@@ -170,10 +172,10 @@ describe("FuruGelato", function () {
 
   it("create on invalid resolver should fail", async () => {
     await expect(
-      furuGelato.connect(owner).unregisterResolver(taskTimer.address)
+      furuGelato.connect(owner).unregisterResolver(treviTaskTimer.address)
     )
       .to.emit(furuGelato, "ResolverWhitelistRemoved")
-      .withArgs(taskTimer.address);
+      .withArgs(treviTaskTimer.address);
     const config = utils.hexlify(constants.MaxUint256);
     const data0 = aTrevi.interface.encodeFunctionData(
       "harvestAngelsAndCharge",
@@ -194,15 +196,17 @@ describe("FuruGelato", function () {
     ]);
     const dsCreateTask = taskHandler.interface.encodeFunctionData(
       "createTask",
-      [taskTimer.address, actionData]
+      [treviTaskTimer.address, actionData]
     );
     await expect(
       dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
     ).to.be.revertedWith("Invalid resolver");
 
-    await expect(furuGelato.connect(owner).registerResolver(taskTimer.address))
+    await expect(
+      furuGelato.connect(owner).registerResolver(treviTaskTimer.address)
+    )
       .to.emit(furuGelato, "ResolverWhitelistAdded")
-      .withArgs(taskTimer.address);
+      .withArgs(treviTaskTimer.address);
   });
 
   it("check create and cancel task", async () => {
@@ -226,29 +230,29 @@ describe("FuruGelato", function () {
     ]);
     const dsCreateTask = taskHandler.interface.encodeFunctionData(
       "createTask",
-      [taskTimer.address, actionData]
+      [treviTaskTimer.address, actionData]
     );
-    const taskId = await taskTimer.getTaskId(
+    const taskId = await treviTaskTimer.getTaskId(
       dsProxy.address,
-      taskTimer.address,
+      treviTaskTimer.address,
       actionData
     );
     const dsCancelTask = taskHandler.interface.encodeFunctionData(
       "cancelTask",
-      [taskTimer.address, actionData]
+      [treviTaskTimer.address, actionData]
     );
 
     await expect(
       dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
     )
       .to.emit(furuGelato, "TaskCreated")
-      .withArgs(dsProxy.address, taskId, taskTimer.address, actionData);
+      .withArgs(dsProxy.address, taskId, treviTaskTimer.address, actionData);
 
     await expect(
       dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
     )
       .to.emit(furuGelato, "TaskCancelled")
-      .withArgs(dsProxy.address, taskId, taskTimer.address, actionData);
+      .withArgs(dsProxy.address, taskId, treviTaskTimer.address, actionData);
 
     await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
   });
@@ -279,7 +283,7 @@ describe("FuruGelato", function () {
     await expect(
       furuGelato
         .connect(executor)
-        .exec(fee, dsProxy.address, taskTimer.address, actionData)
+        .exec(fee, dsProxy.address, treviTaskTimer.address, actionData)
     ).to.be.revertedWith("Not yet");
 
     const THREE_MIN = 3 * 60;
@@ -289,7 +293,7 @@ describe("FuruGelato", function () {
 
     await furuGelato
       .connect(executor)
-      .exec(fee, dsProxy.address, taskTimer.address, actionData);
+      .exec(fee, dsProxy.address, treviTaskTimer.address, actionData);
 
     expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("2"));
     expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("1"));
@@ -316,10 +320,10 @@ describe("FuruGelato", function () {
     ]);
     const fee = ethers.utils.parseEther("1");
     await expect(
-      furuGelato.connect(owner).unregisterResolver(taskTimer.address)
+      furuGelato.connect(owner).unregisterResolver(treviTaskTimer.address)
     )
       .to.emit(furuGelato, "ResolverWhitelistRemoved")
-      .withArgs(taskTimer.address);
+      .withArgs(treviTaskTimer.address);
 
     const THREE_MIN = 3 * 60;
 
@@ -329,16 +333,18 @@ describe("FuruGelato", function () {
     await expect(
       furuGelato
         .connect(executor)
-        .exec(fee, dsProxy.address, taskTimer.address, actionData)
+        .exec(fee, dsProxy.address, treviTaskTimer.address, actionData)
     ).to.be.revertedWith("Invalid resolver");
 
-    await expect(furuGelato.connect(owner).registerResolver(taskTimer.address))
+    await expect(
+      furuGelato.connect(owner).registerResolver(treviTaskTimer.address)
+    )
       .to.emit(furuGelato, "ResolverWhitelistAdded")
-      .withArgs(taskTimer.address);
+      .withArgs(treviTaskTimer.address);
 
     await furuGelato
       .connect(executor)
-      .exec(fee, dsProxy.address, taskTimer.address, actionData);
+      .exec(fee, dsProxy.address, treviTaskTimer.address, actionData);
 
     expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("4"));
     expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("2"));
@@ -373,16 +379,16 @@ describe("FuruGelato", function () {
     await expect(
       furuGelato
         .connect(executor)
-        .exec(fee, dsProxy.address, taskTimer.address, actionData)
+        .exec(fee, dsProxy.address, treviTaskTimer.address, actionData)
     ).to.be.revertedWith("Not yet");
 
-    await expect(taskTimer.connect(owner).setPeriod(ONE_MIN))
-      .to.emit(taskTimer, "PeriodSet")
+    await expect(treviTaskTimer.connect(owner).setPeriod(ONE_MIN))
+      .to.emit(treviTaskTimer, "PeriodSet")
       .withArgs(ONE_MIN);
 
     await furuGelato
       .connect(executor)
-      .exec(fee, dsProxy.address, taskTimer.address, actionData);
+      .exec(fee, dsProxy.address, treviTaskTimer.address, actionData);
 
     expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("6"));
     expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("3"));
