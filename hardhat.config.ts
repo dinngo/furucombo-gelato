@@ -1,7 +1,7 @@
 // PLUGINS
-import "@nomiclabs/hardhat-waffle";
-import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-waffle";
 // Process Env Variables
 import * as dotenv from "dotenv";
 import { utils } from "ethers";
