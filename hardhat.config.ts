@@ -1,6 +1,7 @@
 // PLUGINS
-import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-waffle";
 // Process Env Variables
 import * as dotenv from "dotenv";
 import { utils } from "ethers";
@@ -8,12 +9,22 @@ import "hardhat-deploy";
 // Config
 import { HardhatUserConfig } from "hardhat/config";
 
+const fs = require("fs");
+
 dotenv.config({ path: __dirname + "/.env" });
 
 const ALCHEMY_ID = process.env.ALCHEMY_ID;
 
 const PK_MAINNET = process.env.PK_MAINNET;
 const PK = process.env.PK;
+
+let key_beta;
+
+try {
+  key_beta = fs.readFileSync(".secret_beta").toString().trim();
+} catch (err) {
+  console.log("No available .secret_beta");
+}
 
 // CONFIG
 const config: HardhatUserConfig = {
@@ -54,6 +65,11 @@ const config: HardhatUserConfig = {
       url: "https://rpc-mumbai.maticvigil.com",
       chainId: 80001,
       accounts: PK ? [PK] : [],
+    },
+    beta: {
+      accounts: key_beta ? [key_beta] : [],
+      chainId: 137,
+      url: "https://polygon-beta.furucombo.app/",
     },
   },
 

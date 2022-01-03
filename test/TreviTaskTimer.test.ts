@@ -33,7 +33,7 @@ describe("TaskTimer", function () {
   let aTrevi: ATreviMock;
 
   let taskHandler: CreateTaskHandler;
-  let taskTimer: TaskTimer;
+  let treviTaskTimer: TaskTimer;
   let foo: Foo;
 
   let actionData: any;
@@ -51,7 +51,7 @@ describe("TaskTimer", function () {
     const dsProxyFactoryF = await ethers.getContractFactory("DSProxyFactory");
     const dsGuardF = await ethers.getContractFactory("DSGuard");
     const dsProxyF = await ethers.getContractFactory("DSProxy");
-    const taskTimerF = await ethers.getContractFactory("TaskTimer");
+    const treviTaskTimerF = await ethers.getContractFactory("TreviTaskTimer");
     const fooF = await ethers.getContractFactory("Foo");
 
     const taskHandlerF = await ethers.getContractFactory("CreateTaskHandler");
@@ -67,7 +67,7 @@ describe("TaskTimer", function () {
     const aTreviD = await aTreviF.deploy();
     const dsProxyFactoryD = await dsProxyFactoryF.deploy();
     const dsGuardD = await dsGuardF.deploy();
-    const taskTimerD = await taskTimerF
+    const treviTaskTimerD = await treviTaskTimerF
       .connect(owner)
       .deploy(
         actionD.address,
@@ -110,9 +110,9 @@ describe("TaskTimer", function () {
       aTreviD.address
     )) as ATreviMock;
 
-    taskTimer = (await ethers.getContractAt(
+    treviTaskTimer = (await ethers.getContractAt(
       "TaskTimer",
-      taskTimerD.address
+      treviTaskTimerD.address
     )) as TaskTimer;
 
     foo = (await ethers.getContractAt("Foo", fooD.address)) as Foo;
@@ -177,7 +177,7 @@ describe("TaskTimer", function () {
       ]);
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [taskTimer.address, fooActionData]
+        [treviTaskTimer.address, fooActionData]
       );
       await expect(
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
@@ -201,7 +201,7 @@ describe("TaskTimer", function () {
       ]);
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [taskTimer.address, actionDataWrong]
+        [treviTaskTimer.address, actionDataWrong]
       );
 
       await expect(
@@ -214,19 +214,19 @@ describe("TaskTimer", function () {
     it("should update the time when task created", async () => {
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [taskTimer.address, actionData]
+        [treviTaskTimer.address, actionData]
       );
-      const taskId = await taskTimer.getTaskId(
+      const taskId = await treviTaskTimer.getTaskId(
         dsProxy.address,
-        taskTimer.address,
+        treviTaskTimer.address,
         actionData
       );
       await expect(
         dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask)
       )
         .to.emit(furuGelato, "TaskCreated")
-        .withArgs(dsProxy.address, taskId, taskTimer.address, actionData);
-      expect(await taskTimer.lastExecTimes(taskId)).to.be.gt(
+        .withArgs(dsProxy.address, taskId, treviTaskTimer.address, actionData);
+      expect(await treviTaskTimer.lastExecTimes(taskId)).to.be.gt(
         ethers.BigNumber.from("0")
       );
     });
@@ -236,29 +236,29 @@ describe("TaskTimer", function () {
     beforeEach(async () => {
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [taskTimer.address, actionData]
+        [treviTaskTimer.address, actionData]
       );
 
       await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
     });
 
     it("should reset the time when task is canceled", async () => {
-      const taskId = await taskTimer.getTaskId(
+      const taskId = await treviTaskTimer.getTaskId(
         dsProxy.address,
-        taskTimer.address,
+        treviTaskTimer.address,
         actionData
       );
       const dsCancelTask = taskHandler.interface.encodeFunctionData(
         "cancelTask",
-        [taskTimer.address, actionData]
+        [treviTaskTimer.address, actionData]
       );
 
       await expect(
         dsProxy.connect(user0).execute(taskHandler.address, dsCancelTask)
       )
         .to.emit(furuGelato, "TaskCancelled")
-        .withArgs(dsProxy.address, taskId, taskTimer.address, actionData);
-      expect(await taskTimer.lastExecTimes(taskId)).to.be.eql(
+        .withArgs(dsProxy.address, taskId, treviTaskTimer.address, actionData);
+      expect(await treviTaskTimer.lastExecTimes(taskId)).to.be.eql(
         ethers.BigNumber.from("0")
       );
     });
@@ -268,7 +268,7 @@ describe("TaskTimer", function () {
     beforeEach(async () => {
       const dsCreateTask = taskHandler.interface.encodeFunctionData(
         "createTask",
-        [taskTimer.address, actionData]
+        [treviTaskTimer.address, actionData]
       );
 
       await dsProxy.connect(user0).execute(taskHandler.address, dsCreateTask);
@@ -278,18 +278,18 @@ describe("TaskTimer", function () {
       expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("0"));
       expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("0"));
 
-      const taskId = await taskTimer.getTaskId(
+      const taskId = await treviTaskTimer.getTaskId(
         dsProxy.address,
-        taskTimer.address,
+        treviTaskTimer.address,
         actionData
       );
       await expect(
         furuGelato
           .connect(executor)
-          .exec(fee, dsProxy.address, taskTimer.address, actionData)
+          .exec(fee, dsProxy.address, treviTaskTimer.address, actionData)
       ).to.be.revertedWith("Not yet");
 
-      let lastExecTime = await taskTimer.lastExecTimes(taskId);
+      let lastExecTime = await treviTaskTimer.lastExecTimes(taskId);
       const THREE_MIN = 3 * 60;
 
       await network.provider.send("evm_increaseTime", [THREE_MIN]);
@@ -297,10 +297,10 @@ describe("TaskTimer", function () {
 
       await furuGelato
         .connect(executor)
-        .exec(fee, dsProxy.address, taskTimer.address, actionData);
+        .exec(fee, dsProxy.address, treviTaskTimer.address, actionData);
       expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("2"));
       expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("1"));
-      expect(await taskTimer.lastExecTimes(taskId)).to.be.gt(
+      expect(await treviTaskTimer.lastExecTimes(taskId)).to.be.gt(
         lastExecTime.add(ethers.BigNumber.from(THREE_MIN))
       );
     });
@@ -314,16 +314,16 @@ describe("TaskTimer", function () {
       await expect(
         furuGelato
           .connect(executor)
-          .exec(fee, dsProxy.address, taskTimer.address, actionData)
+          .exec(fee, dsProxy.address, treviTaskTimer.address, actionData)
       ).to.be.revertedWith("Not yet");
 
-      await expect(taskTimer.connect(owner).setPeriod(ONE_MIN))
-        .to.emit(taskTimer, "PeriodSet")
+      await expect(treviTaskTimer.connect(owner).setPeriod(ONE_MIN))
+        .to.emit(treviTaskTimer, "PeriodSet")
         .withArgs(ONE_MIN);
 
       await furuGelato
         .connect(executor)
-        .exec(fee, dsProxy.address, taskTimer.address, actionData);
+        .exec(fee, dsProxy.address, treviTaskTimer.address, actionData);
       expect(await aTrevi.count()).to.be.eql(ethers.BigNumber.from("2"));
       expect(await aFurucombo.count()).to.be.eql(ethers.BigNumber.from("1"));
     });
