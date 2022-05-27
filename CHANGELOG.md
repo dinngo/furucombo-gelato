@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### Added
+
+- CI.
+
 ## [1.1.0] - 2021-12-22
 
 ### Added
