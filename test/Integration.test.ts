@@ -54,11 +54,6 @@ describe("FuruGelato Integration", function () {
 
     const taskHandlerF = await ethers.getContractFactory("CreateTaskHandler");
 
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [gelatoAddress],
-    });
-
     const furuGelatoD = await furuGelatoF.connect(owner).deploy(gelatoAddress);
     const actionD = await actionF.deploy();
     const aFurucomboD = await aFurucomboF.deploy();

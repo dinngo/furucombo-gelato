@@ -52,11 +52,6 @@ describe("QuickswapFarmTaskTimer", function () {
 
     const taskHandlerF = await ethers.getContractFactory("CreateTaskHandler");
 
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [gelatoAddress],
-    });
-
     furuGelato = await furuGelatoF.connect(owner).deploy(gelatoAddress);
     action = await actionF.deploy();
     aFurucombo = await aFurucomboF.deploy();
