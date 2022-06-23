@@ -3,7 +3,7 @@ const utils = ethers.utils;
 // beta parameter
 const gelatoAddress = "0xCFED8d811a30AFF6A0aDA7d866811BaaA17f2Cc7";
 const taskExecutor = "0x522a8bDE53341fcB37525C24731F575453c4A146";
-const aQuickswapFarm = "0xa34A5C4687AE6ab889BC67D575F3C21467Ec055E";
+const aQuickswapDualMining = "0x1B742498dA0Aa60aE55e7a8673105635DBD7C64B";
 const aFurucombo = "0xC8B14BFcdf744459aEae87F762AFe6C943ddD7EA";
 const gnosisAddress = "0x64585922a9703d9EdE7d353a6522eb2970f75066";
 const period = 60;
@@ -13,7 +13,7 @@ const fakeKey =
 module.exports = async ({ getNamedAccounts, deployments }) => {
   if (network.name != "beta") {
     console.log(
-      "QuickswapFarmTaskTimer deployment script only used for beta network."
+      "QuickswapDualMiningTaskTimer deployment script only used for beta network."
     );
     return;
   }
@@ -24,13 +24,19 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const signer = new ethers.Wallet(fakeKey, provider);
 
   // deploy resolver
-  await deploy("QuickswapFarmTaskTimer", {
+  await deploy("QuickswapDualMiningTaskTimer", {
     from: deployer,
-    args: [taskExecutor, gelatoAddress, aQuickswapFarm, aFurucombo, period],
+    args: [
+      taskExecutor,
+      gelatoAddress,
+      aQuickswapDualMining,
+      aFurucombo,
+      period,
+    ],
     log: true,
   });
-  const quickswapFarmTaskTimer = await ethers.getContract(
-    "QuickswapFarmTaskTimer",
+  const QuickswapDualMiningTaskTimer = await ethers.getContract(
+    "QuickswapDualMiningTaskTimer",
     deployer
   );
 
@@ -40,7 +46,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   ]);
 
   const registerData = iface.encodeFunctionData("registerResolver", [
-    quickswapFarmTaskTimer.address,
+    QuickswapDualMiningTaskTimer.address,
   ]);
 
   const customData = registerData + "ff00ff" + gnosisAddress.replace("0x", "");
@@ -55,4 +61,4 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
 };
 
-module.exports.tags = ["QuickswapFarmTaskTimer"];
+module.exports.tags = ["QuickswapDualMiningTaskTimer"];
