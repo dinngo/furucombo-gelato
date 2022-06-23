@@ -34,3 +34,5 @@ dist
 # VS Code
 .vscode
 
+# secrets
+.secret_beta
