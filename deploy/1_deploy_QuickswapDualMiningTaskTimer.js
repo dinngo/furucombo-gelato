@@ -24,7 +24,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const signer = new ethers.Wallet(fakeKey, provider);
 
   // deploy resolver
-  await deploy("QuickswapDualMiningTaskTimer", {
+  const result = await deploy("QuickswapDualMiningTaskTimer", {
     from: deployer,
     args: [
       taskExecutor,
@@ -35,30 +35,29 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     ],
     log: true,
   });
-  const QuickswapDualMiningTaskTimer = await ethers.getContract(
-    "QuickswapDualMiningTaskTimer",
-    deployer
-  );
 
-  // register to FuruGelato
-  const iface = new utils.Interface([
-    "function registerResolver(address _resolverAddress)",
-  ]);
+  if (result.newlyDeployed) {
+    // register to FuruGelato
+    const iface = new utils.Interface([
+      "function registerResolver(address _resolverAddress)",
+    ]);
 
-  const registerData = iface.encodeFunctionData("registerResolver", [
-    QuickswapDualMiningTaskTimer.address,
-  ]);
+    const registerData = iface.encodeFunctionData("registerResolver", [
+      result.address,
+    ]);
 
-  const customData = registerData + "ff00ff" + gnosisAddress.replace("0x", "");
+    const customData =
+      registerData + "ff00ff" + gnosisAddress.replace("0x", "");
 
-  const nonce = await provider.getTransactionCount(gnosisAddress);
+    const nonce = await provider.getTransactionCount(gnosisAddress);
 
-  await signer.sendTransaction({
-    to: gelatoAddress,
-    nonce: nonce,
-    data: customData,
-    gasLimit: 10000000,
-  });
+    await signer.sendTransaction({
+      to: gelatoAddress,
+      nonce: nonce,
+      data: customData,
+      gasLimit: 10000000,
+    });
+  }
 };
 
 module.exports.tags = ["QuickswapDualMiningTaskTimer"];
